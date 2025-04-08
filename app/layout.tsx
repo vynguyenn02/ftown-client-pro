@@ -1,21 +1,15 @@
-// app/layout.tsx
+"use client"; // 👈 thêm dòng này nếu bạn cần toàn bộ là Client Component
+
 import "styles/tailwind.css";
 import "styles/global.css";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { ConfigProvider } from "antd";
-import { Metadata } from "next";
 import { Toaster } from "react-hot-toast";
 import NotificationWidget from "@/components/NotificationWidget/NotificationWidget";
 import ReactQueryProvider from "@/components/ReactQueryProvider";
 import theme from "@/styles/antd.styles";
 import { NotificationProvider } from "@/contexts/NotificationContextProps";
-
-export const metadata: Metadata = {
-  title: {
-    template: "%s | Funkytown",
-    default: "Funkytown",
-  },
-};
+import { Suspense } from "react";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -25,7 +19,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <NotificationProvider>
             <AntdRegistry>
               <ConfigProvider theme={theme}>
-                {children}
+                <Suspense fallback={<div className="p-8 text-center">Loading app...</div>}>
+                  {children}
+                </Suspense>
                 <NotificationWidget />
               </ConfigProvider>
               <Toaster toastOptions={{ duration: 3000 }} />
