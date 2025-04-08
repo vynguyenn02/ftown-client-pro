@@ -5,7 +5,6 @@ import BestSeller from "@/components/BestSeller/BestSeller";
 import Styling from "@/components/Styling/Styling";
 import PromotionCode from "@/components/PromotionCode/PromotionCode";
 import Advertise from "@/components/Advertise/Advertise";
-import Chatbot from "@/components/ChatBot/page";
 
 export default function Page() {
   return (
@@ -21,7 +20,6 @@ export default function Page() {
       <Footer />
 
       {/* Thêm Chatbot ở cuối file */}
-      <Chatbot />
     </div>
   );
 }
