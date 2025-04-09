@@ -7,7 +7,7 @@ import { env } from "./env.mjs"
  */
 const config = withPlugins([[withBundleAnalyzer({ enabled: env.ANALYZE })]], {
   reactStrictMode: true,
-  experimental: { instrumentationHook: true },
+  experimental: { instrumentationHook: false },
   rewrites() {
     return [
       { source: "/healthz", destination: "/api/health" },

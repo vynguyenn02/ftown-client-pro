@@ -103,6 +103,8 @@ export default function CheckOutPage() {
         return;
       }
       toast.success("Đặt hàng thành công!");
+       // Xóa dữ liệu checkout khỏi localStorage
+       localStorage.removeItem("checkoutData");
       if (paymentMethodToSend === "PAYOS" && res.data.data.paymentUrl) {
         window.location.href = res.data.data.paymentUrl;
       } else {
