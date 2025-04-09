@@ -240,7 +240,7 @@ export default function CheckOutPage() {
             <div className="border-t pt-4">
               <div className="flex justify-between text-base font-semibold">
                 <span>Tạm tính</span>
-                <span>{checkoutData.orderTotal.toLocaleString("vi-VN")}₫</span>
+                <span>{checkoutData.subTotal.toLocaleString("vi-VN")}₫</span>
               </div>
               <div className="flex justify-between text-base font-semibold">
                 <span>Phí vận chuyển</span>
@@ -249,7 +249,7 @@ export default function CheckOutPage() {
               <div className="flex justify-between text-xl font-bold mt-2">
                 <span>Tổng cộng</span>
                 <span>
-                  {(checkoutData.orderTotal + checkoutData.shippingCost).toLocaleString("vi-VN")}₫
+                  {(checkoutData.subTotal + checkoutData.shippingCost).toLocaleString("vi-VN")}₫
                 </span>
               </div>
             </div>

@@ -192,7 +192,7 @@ export default function OrderPage() {
                       <p className="text-gray-600">
                         Tạm tính:{" "}
                         <span className="font-semibold text-gray-800">
-                          {order.orderTotal.toLocaleString("vi-VN")}đ
+                          {order.subTotal.toLocaleString("vi-VN")}đ
                         </span>
                       </p>
                       <div className="flex gap-2">

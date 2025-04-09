@@ -265,7 +265,7 @@ export type CheckoutStore = {
 // Response
 export type CheckoutResponse = {
   checkOutSessionId: string;
-  orderTotal: number;
+  subTotal: number;
   shippingCost: number;
   availableStores: CheckoutStore[];
   availablePaymentMethods: string[];
@@ -298,7 +298,7 @@ export type OrderItem = {
 export type Order = {
   orderId: number;
   status: string;
-  orderTotal: number;
+  subTotal: number;
   shippingCost: number;
   paymentMethod: string;
   paymentUrl: string;
