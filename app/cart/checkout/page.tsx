@@ -1,4 +1,3 @@
-// pages/checkout.tsx (hoặc tương tự)
 "use client";
 
 import { useEffect, useState } from "react";
@@ -6,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { Image } from "antd";
 import Header from "@/components/Header/Header";
 import Footer from "@/components/Footer/Footer";
-import AddAddressModal from "@/components/AddAddressModal/AddAddressModal"; // Import component Modal vừa tạo
+import AddAddressModal from "@/components/AddAddressModal/AddAddressModal";
 import { CheckoutResponse, ShippingAddress } from "@/types";
 import toast from "react-hot-toast";
 import orderService from "@/services/order.service";
+import { getCookie } from "cookies-next";
 
+// BroadcastChannel để lắng nghe sự kiện logout
 let bc: BroadcastChannel | null = null;
 if (typeof window !== "undefined") {
   bc = new BroadcastChannel("funky-logout");
@@ -23,8 +24,8 @@ export default function CheckOutPage() {
   const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
   const [showAddAddressModal, setShowAddAddressModal] = useState(false);
 
-  // Giả sử bạn có accountId từ thông tin người dùng hoặc từ shippingAddresses có sẵn
-  const accountId = checkoutData?.shippingAddresses[0]?.accountId || 0;
+  // Luôn lấy accountId từ cookie (không phụ thuộc vào shippingAddresses)
+  const accountId = Number(getCookie("accountId")) || 0;
 
   useEffect(() => {
     if (bc) {
@@ -46,11 +47,18 @@ export default function CheckOutPage() {
       try {
         const parsed = JSON.parse(data) as CheckoutResponse;
         setCheckoutData(parsed);
-        // Nếu không có địa chỉ nào, set selectedAddress là -1 và mở modal thêm địa chỉ mới
-        if (parsed.shippingAddresses.length === 0) {
+        if (parsed.shippingAddresses && parsed.shippingAddresses.length > 0) {
+          const defaultAddress: ShippingAddress =
+            parsed.shippingAddresses.find(
+              (addr: ShippingAddress) => addr.isDefault
+            ) ?? parsed.shippingAddresses[0]!;
+          setSelectedAddress(defaultAddress.addressId);
+        } else {
           setSelectedAddress(-1);
           setShowAddAddressModal(true);
         }
+        
+        
       } catch (error) {
         console.error("Lỗi khi parse dữ liệu Checkout:", error);
         toast.error("Dữ liệu đơn hàng không hợp lệ!");
@@ -62,6 +70,7 @@ export default function CheckOutPage() {
     }
   }, [router]);
   
+
   const handleSelectAddress = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     console.log("handleSelectAddress triggered, value:", value);
@@ -71,7 +80,6 @@ export default function CheckOutPage() {
       setSelectedAddress(Number(value));
     }
   };
-  
 
   const handlePlaceOrder = async () => {
     if (!selectedAddress || !selectedPayment) {
@@ -90,7 +98,7 @@ export default function CheckOutPage() {
     const paymentMethodToSend = selectedPayment === "COD" ? "COD" : "PAYOS";
 
     const payload = {
-      accountId: shippingAddress.accountId,
+      accountId: shippingAddress.accountId, // hoặc bạn có thể truyền accountId lấy từ cookie
       checkOutSessionId: checkoutData?.checkOutSessionId || "",
       shippingAddressId: selectedAddress,
       paymentMethod: paymentMethodToSend,
@@ -103,8 +111,8 @@ export default function CheckOutPage() {
         return;
       }
       toast.success("Đặt hàng thành công!");
-       // Xóa dữ liệu checkout khỏi localStorage
-       localStorage.removeItem("checkoutData");
+      // Xóa dữ liệu checkout khỏi localStorage
+      localStorage.removeItem("checkoutData");
       if (paymentMethodToSend === "PAYOS" && res.data.data.paymentUrl) {
         window.location.href = res.data.data.paymentUrl;
       } else {
@@ -116,9 +124,8 @@ export default function CheckOutPage() {
     }
   };
 
-  // Xử lý callback khi thêm địa chỉ mới thành công
+  // Callback khi thêm địa chỉ mới thành công
   const handleAddAddressSuccess = (newAddress: ShippingAddress) => {
-    // Cập nhật lại danh sách địa chỉ
     setCheckoutData((prev) => {
       if (!prev) return prev;
       return {
@@ -126,7 +133,6 @@ export default function CheckOutPage() {
         shippingAddresses: [...prev.shippingAddresses, newAddress],
       };
     });
-    // Đặt địa chỉ vừa tạo làm địa chỉ được chọn
     setSelectedAddress(newAddress.addressId);
     setShowAddAddressModal(false);
   };
@@ -161,8 +167,7 @@ export default function CheckOutPage() {
                 <option value="-1">Thêm địa chỉ mới...</option>
                 {checkoutData.shippingAddresses.map((addr: ShippingAddress) => (
                   <option key={addr.addressId} value={addr.addressId}>
-                    {addr.recipientName} - {addr.address}, {addr.city}
-                    - {addr.district} - {addr.province}
+                    {addr.recipientName} - {addr.address}, {addr.city} - {addr.district} - {addr.province}
                   </option>
                 ))}
               </select>

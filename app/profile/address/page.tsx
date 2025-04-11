@@ -23,7 +23,6 @@ type AddressItem = {
   ward: string;       // Phường/Xã (dùng làm city trong request)
   detail: string;     // Địa chỉ chi tiết
   isDefault?: boolean;
-  addressType?: "home" | "office";
 };
 
 export default function AddressPage() {
@@ -166,7 +165,6 @@ export default function AddressPage() {
           ward: selectedWard,
           detail: detailAddress,
           isDefault: isDefault,
-          addressType: addressType,
         };
         setAddresses((prev) => {
           if (isDefault) {
@@ -232,9 +230,7 @@ export default function AddressPage() {
                         {addr.detail}, {addr.district}, {addr.province}, {addr.country}
                       </p>
                       <div className="flex items-center mt-2 space-x-2">
-                        <span className="bg-gray-200 px-3 py-1 text-sm">
-                          {addr.addressType === "home" ? "🏠 Nhà" : "Văn phòng"}
-                        </span>
+                        
                         {addr.isDefault && (
                           <span className="bg-blue-100 text-blue-600 px-3 py-1 text-sm">
                             Mặc định
