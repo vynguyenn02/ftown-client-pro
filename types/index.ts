@@ -134,6 +134,10 @@ export type CartResponse = {
   status: boolean;
   message: string;
 };
+export type EditCart = {
+  productVariantId: number;
+  quantityChange: number;
+}
 export type DateOfBirth = {
   year: number;
   month: number;
@@ -184,10 +188,9 @@ export type CreateShippingAddressRequest = {
   province: string;
   district: string;
   country: string;
-  postalCode: string;
   recipientName: string;
   recipientPhone: string;
-  email: string;
+  email?: string;
   isDefault: boolean;
 }
 // Nếu backend trả về địa chỉ mới với đầy đủ trường của ShippingAddress

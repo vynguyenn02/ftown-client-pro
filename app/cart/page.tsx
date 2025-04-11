@@ -17,10 +17,47 @@ if (typeof window !== "undefined") {
   bc = new BroadcastChannel("funky-logout");
 }
 
+/** 
+ * Component xác nhận custom.
+ * Popup có nền overlay màu nâu trong suốt (sử dụng mã màu #8B4513).
+ */
+interface ConfirmModalProps {
+  visible: boolean;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+const ConfirmModal = ({ visible, message, onConfirm, onCancel }: ConfirmModalProps) => {
+  if (!visible) return null;
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-50">
+      {/* Overlay nền nâu với độ trong suốt */}
+      <div className="absolute inset-0 bg-[#FFFFFF] opacity-50"></div>
+      {/* Modal */}
+      <div className="relative bg-white p-6 rounded shadow-md z-10">
+        <p className="mb-4">{message}</p>
+        <div className="flex justify-end space-x-3">
+          <button onClick={onCancel} className="px-4 py-2 bg-gray-300 rounded">
+            Không
+          </button>
+          <button onClick={onConfirm} className="px-4 py-2 bg-[#8B4513] text-white rounded">
+            Có
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function CartPage() {
   const router = useRouter();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // State cho modal xác nhận
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState("");
+  const [onConfirm, setOnConfirm] = useState<() => void>(() => {});
 
   // Lắng nghe sự kiện logout
   useEffect(() => {
@@ -36,7 +73,7 @@ export default function CartPage() {
     };
   }, []);
 
-  // Fetch giỏ hàng
+  // Fetch giỏ hàng ban đầu
   useEffect(() => {
     const accId = getCookie("accountId");
     if (!accId) {
@@ -48,7 +85,6 @@ export default function CartPage() {
       .getCart(accountId)
       .then((res) => {
         if (res.data.status) {
-          // Mỗi item thêm thuộc tính isSelected = false để quản lý chọn
           const updated = res.data.data.map((item: CartItem) => ({
             ...item,
             isSelected: false,
@@ -73,6 +109,141 @@ export default function CartPage() {
     );
   };
 
+  // Hàm chỉnh sửa số lượng của sản phẩm (API editCart)
+  const handleEditQuantity = (productVariantId: number, change: number) => {
+    const accId = getCookie("accountId");
+    if (!accId) {
+      toast.error("Bạn chưa đăng nhập!");
+      return;
+    }
+    const accountId = Number(accId);
+    console.log("Edit Cart Request:", {
+      accountId,
+      productVariantId,
+      quantityChange: change,
+    });
+
+    cartService
+      .editCart(accountId, { productVariantId, quantityChange: change })
+      .then((res) => {
+        console.log("Edit Cart Response:", res);
+        if (res.data.status) {
+          toast.success(res.data.message);
+          // Cập nhật state cục bộ bằng cách tăng/giảm số lượng
+          setCart((prevCart) =>
+            prevCart.map((item) =>
+              item.productVariantId === productVariantId
+                ? { ...item, quantity: item.quantity + change }
+                : item
+            )
+          );
+        } else {
+          toast.error(res.data.message);
+        }
+      })
+      .catch((error) => {
+        console.error("Error in editCart:", error);
+        toast.error("Có lỗi xảy ra khi cập nhật số lượng!");
+      });
+  };
+
+  // Hàm thực hiện xóa 1 sản phẩm khỏi giỏ hàng
+  const performRemoveItem = (productVariantId: number) => {
+    const accId = getCookie("accountId");
+    if (!accId) {
+      toast.error("Bạn chưa đăng nhập!");
+      return;
+    }
+    const accountId = Number(accId);
+    cartService
+    .removeCartItem(accountId, productVariantId)
+    .then((res) => {
+      if (res.data.status) {
+        toast.success(res.data.message);
+        setCart((prevCart) =>
+          prevCart.filter(
+            (item) => item.productVariantId !== productVariantId
+          )
+        );
+      } else {
+        toast.error(res.data.message);
+      }
+    })
+    .catch(() => toast.error("Có lỗi xảy ra khi xóa sản phẩm!"));
+  
+  };
+
+  // Hàm xử lý xóa sản phẩm bằng modal xác nhận thay vì window.confirm
+  const handleRemoveItem = (productVariantId: number) => {
+    // Hiển thị modal xác nhận
+    setConfirmMessage("Bạn có chắc chắn muốn xóa sản phẩm khỏi giỏ hàng?");
+    setOnConfirm(() => () => {
+      // Lưu lại state hiện tại để có thể rollback nếu có lỗi
+      const prevCart = [...cart];
+      // Cập nhật UI ngay lập tức
+      setCart(prevCart.filter(item => item.productVariantId !== productVariantId));
+      setConfirmVisible(false);
+      
+      // Sau đó gọi API xóa sản phẩm
+      const accId = getCookie("accountId");
+      if (!accId) {
+        toast.error("Bạn chưa đăng nhập!");
+        setCart(prevCart);
+        return;
+      }
+      const accountId = Number(accId);
+      cartService
+        .removeCartItem(accountId, productVariantId)
+        .then((res) => {
+          if (res.data.status) {
+            toast.success(res.data.message);
+          } else {
+            toast.error(res.data.message);
+            // Nếu API báo lỗi, rollback lại state
+            setCart(prevCart);
+          }
+        })
+        .catch(() => {
+          toast.error("Có lỗi xảy ra khi xóa sản phẩm!");
+          // Rollback lại nếu có lỗi
+          setCart(prevCart);
+        });
+    });
+    setConfirmVisible(true);
+  };
+  
+  // Hàm thực hiện xóa tất cả sản phẩm khỏi giỏ hàng
+  const performRemoveAllItems = () => {
+    const accId = getCookie("accountId");
+    if (!accId) {
+      toast.error("Bạn chưa đăng nhập!");
+      return;
+    }
+    const accountId = Number(accId);
+    cartService
+    .removeAllCartItem(accountId)
+    .then((res) => {
+      if (res.data.status) {
+        toast.success(res.data.message);
+        setCart([]);
+      } else {
+        toast.error(res.data.message);
+      }
+    })
+    .catch(() => toast.error("Có lỗi xảy ra khi xóa tất cả sản phẩm!"));
+  
+  };
+
+  // Hàm xử lý xóa tất cả sản phẩm bằng modal xác nhận
+  const handleRemoveAllItems = () => {
+    setConfirmMessage("Bạn có chắc chắn muốn xóa tất cả sản phẩm khỏi giỏ hàng?");
+    setOnConfirm(() => () => {
+      performRemoveAllItems();
+      setConfirmVisible(false);
+    });
+    setConfirmVisible(true);
+  };
+
   // Xử lý thanh toán
   const handleCheckout = async () => {
     const selectedItems = cart.filter((item) => item.isSelected);
@@ -82,7 +253,6 @@ export default function CartPage() {
     }
     const variantIds = selectedItems.map((item) => item.productVariantId);
     const accountId = Number(getCookie("accountId"));
-
     try {
       const payload: CheckoutRequest = {
         accountId,
@@ -90,8 +260,6 @@ export default function CartPage() {
       };
       const response = await cartService.checkout(payload);
       const checkoutData: CheckoutResponse = response.data;
-
-      // Lưu dữ liệu tạm vào localStorage (hoặc state) để dùng ở trang checkout
       localStorage.setItem("checkoutData", JSON.stringify(checkoutData));
       router.push("/cart/checkout");
     } catch (error) {
@@ -107,12 +275,18 @@ export default function CartPage() {
           {/* Danh sách sản phẩm trong giỏ */}
           <div className="w-full md:w-2/3 bg-white shadow-lg p-6">
             <h2 className="text-2xl font-bold mb-4">GIỎ HÀNG</h2>
-
-            {/* Phân nhánh hiển thị: đang loading -> spinner, 
-                load xong mà trống -> "Giỏ hàng trống",
-                còn lại -> bảng sản phẩm */}
+            {/* Nút "Xóa tất cả" hiện nếu có sản phẩm trong giỏ */}
+            {!loading && cart.length > 0 && (
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={handleRemoveAllItems}
+                  className="px-4 py-2 bg-red-500 text-white rounded"
+                >
+                  Xóa tất cả
+                </button>
+              </div>
+            )}
             {loading ? (
-              // 1. Đang loading
               <div className="flex items-center justify-center h-64">
                 <img
                   src="https://res.cloudinary.com/dqjtkdldj/image/upload/v1741405966/z6323749454613_8d6194817d47210d63f49e97d9b4ad22_oqwewn.jpg"
@@ -121,10 +295,8 @@ export default function CartPage() {
                 />
               </div>
             ) : cart.length === 0 ? (
-              // 2. Đã load xong nhưng giỏ hàng trống
               <p className="text-center py-10">Giỏ hàng trống</p>
             ) : (
-              // 3. Đã load xong và có sản phẩm
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b text-gray-700">
@@ -142,9 +314,7 @@ export default function CartPage() {
                         <input
                           type="checkbox"
                           checked={item.isSelected || false}
-                          onChange={(e) =>
-                            handleSelect(item.productVariantId, e.target.checked)
-                          }
+                          onChange={(e) => handleSelect(item.productVariantId, e.target.checked)}
                         />
                       </td>
                       <td className="flex items-center gap-4 p-3">
@@ -164,12 +334,28 @@ export default function CartPage() {
                           </p>
                         </div>
                       </td>
-                      <td className="p-3 font-semibold">{item.quantity}</td>
+                      <td className="p-3">
+                        <div className="flex items-center">
+                          <button
+                            onClick={() => handleEditQuantity(item.productVariantId, -1)}
+                            className="px-2 py-1 border"
+                          >
+                            -
+                          </button>
+                          <span className="px-3">{item.quantity}</span>
+                          <button
+                            onClick={() => handleEditQuantity(item.productVariantId, 1)}
+                            className="px-2 py-1 border"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </td>
                       <td className="p-3 font-semibold">
                         {(item.discountedPrice * item.quantity).toLocaleString("vi-VN")}₫
                       </td>
                       <td className="p-3">
-                        <button>
+                        <button onClick={() => handleRemoveItem(item.productVariantId)}>
                           <AiOutlineDelete size={20} className="text-red-500" />
                         </button>
                       </td>
@@ -179,7 +365,6 @@ export default function CartPage() {
               </table>
             )}
           </div>
-
           {/* Cột thanh toán */}
           <div className="w-full md:w-1/3 bg-white shadow-lg p-6">
             <h3 className="text-xl font-bold mb-4">Tổng tiền</h3>
@@ -187,7 +372,8 @@ export default function CartPage() {
               {cart
                 .filter((item) => item.isSelected)
                 .reduce((sum, item) => sum + item.discountedPrice * item.quantity, 0)
-                .toLocaleString("vi-VN")}₫
+                .toLocaleString("vi-VN")}
+              ₫
             </p>
             <button
               onClick={handleCheckout}
@@ -199,6 +385,13 @@ export default function CartPage() {
         </div>
       </main>
       <Footer />
+      {/* Hiển thị ConfirmModal nếu cần */}
+      <ConfirmModal
+        visible={confirmVisible}
+        message={confirmMessage}
+        onConfirm={onConfirm}
+        onCancel={() => setConfirmVisible(false)}
+      />
     </div>
   );
 }

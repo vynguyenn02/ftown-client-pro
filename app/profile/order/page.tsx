@@ -177,7 +177,10 @@ export default function OrderPage() {
                         className="flex items-center gap-3 border-b pb-2 mb-2 last:border-none last:mb-0 last:pb-0"
                       >
                         <img
-                          src={item.imageUrl || "https://via.placeholder.com/70x70?text=No+Image"}
+                          src={
+                            item.imageUrl ||
+                            "https://via.placeholder.com/70x70?text=No+Image"
+                          }
                           alt={item.productName || "Sản phẩm"}
                           width={70}
                           height={70}
@@ -185,9 +188,16 @@ export default function OrderPage() {
                         />
                         <div className="flex-1 text-gray-700">
                           <p className="font-semibold">{item.productName}</p>
+                          {/* Hiển thị giá của sản phẩm */}
+                          <p className="text-sm">
+                            Giá: {item.priceAtPurchase.toLocaleString("vi-VN")}đ
+                          </p>
+                          {/* Hiển thị số lượng */}
+                          <p className="text-sm">Số lượng: {item.quantity}</p>
                         </div>
                       </div>
                     ))}
+
                     <div className="flex items-center justify-between">
                       <p className="text-gray-600">
                         Tạm tính:{" "}

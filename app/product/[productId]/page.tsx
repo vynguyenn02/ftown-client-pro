@@ -103,7 +103,6 @@ export default function ProductDetailPage({ params }: { params: { productId: str
         }
         setProduct(data);
         setSelectedImage(data.imagePath);
-        // Nếu có field isFavorite, cập nhật state
         if (typeof data.isFavorite !== "undefined") {
           setIsFavorite(data.isFavorite);
         } else {
@@ -116,8 +115,7 @@ export default function ProductDetailPage({ params }: { params: { productId: str
     };
     fetchProduct();
   }, [params.productId]);
-  
-  
+
   /** Lấy danh sách feedback (ban đầu fetch 3 feedback) */
   useEffect(() => {
     const fetchFeedback = async () => {
@@ -213,6 +211,57 @@ export default function ProductDetailPage({ params }: { params: { productId: str
     }
   };
 
+  /** Hàm tăng/giảm số lượng sản phẩm trong giỏ (gọi API editCart) */
+  const handleEditQuantity = (productVariantId: number, change: number) => {
+    const accId = getCookie("accountId");
+    if (!accId) {
+      toast.error("Bạn chưa đăng nhập!");
+      return;
+    }
+    const accountId = Number(accId);
+    cartService
+      .editCart(accountId, { productVariantId, quantityChange: change })
+      .then((res) => {
+        if (res.data.status) {
+          toast.success(res.data.message);
+          // Cập nhật state cartItems
+          setCartItems((prev) =>
+            prev.map((item) =>
+              item.productVariantId === productVariantId
+                ? { ...item, quantity: item.quantity + change }
+                : item
+            )
+          );
+        } else {
+          toast.error(res.data.message);
+        }
+      })
+      .catch(() => toast.error("Có lỗi xảy ra khi cập nhật số lượng!"));
+  };
+
+  /** Hàm xóa 1 sản phẩm khỏi giỏ (gọi API removeCartItem) */
+  const handleRemoveItem = (productVariantId: number) => {
+    const accId = getCookie("accountId");
+    if (!accId) {
+      toast.error("Bạn chưa đăng nhập!");
+      return;
+    }
+    const accountId = Number(accId);
+    cartService
+      .removeCartItem(accountId, productVariantId)
+      .then((res) => {
+        if (res.data.status) {
+          toast.success(res.data.message);
+          setCartItems((prev) =>
+            prev.filter((i) => i.productVariantId !== productVariantId)
+          );
+        } else {
+          toast.error(res.data.message);
+        }
+      })
+      .catch(() => toast.error("Có lỗi xảy ra khi xóa sản phẩm!"));
+  };
+
   /** Thêm sản phẩm vào giỏ */
   const handleAddToCart = async () => {
     const accId = getCookie("accountId");
@@ -230,13 +279,13 @@ export default function ProductDetailPage({ params }: { params: { productId: str
       toast.error("Sản phẩm không tồn tại!");
       return;
     }
-  
-    // Tính giá dùng khi thêm vào giỏ: nếu có discountedPrice và nhỏ hơn price thì dùng discountedPrice, ngược lại dùng price
+
     const variantPrice =
-      selectedVariant.discountedPrice && selectedVariant.discountedPrice < selectedVariant.price
+      selectedVariant.discountedPrice &&
+      selectedVariant.discountedPrice < selectedVariant.price
         ? selectedVariant.discountedPrice
         : selectedVariant.price;
-  
+
     try {
       const payload = {
         productId: product.productId,
@@ -258,53 +307,43 @@ export default function ProductDetailPage({ params }: { params: { productId: str
       toast.error(err.response?.data?.message || "Có lỗi xảy ra khi thêm vào giỏ hàng!");
     }
   };
-  
-  /** Xóa 1 sản phẩm khỏi giỏ */
-  const handleRemoveItem = (productVariantId: number) => {
-    setCartItems((prev) => prev.filter((i) => i.productVariantId !== productVariantId));
-  };
 
-  /** Hàm xử lý thêm sản phẩm vào danh sách yêu thích */
- /** Hàm xử lý thêm/bỏ sản phẩm vào danh sách yêu thích */
-const handleFavorite = async () => {
-  if (!product) {
-    toast.error("Sản phẩm không tồn tại!");
-    return;
-  }
-  const accId = getCookie("accountId");
-  if (!accId) {
-    toast.error("Bạn chưa đăng nhập!");
-    router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
-    return;
-  }
-  const accountId = Number(accId);
-  try {
-    if (!isFavorite) {
-      // Nếu chưa yêu thích, gọi API thêm vào yêu thích
-      const res = await productService.postFavoriteProduct(accountId, product.productId);
-      if (res.data.status) {
-        toast.success(res.data.message);
-        setIsFavorite(true);
-      } else {
-        toast.error(res.data.message);
-      }
-    } else {
-      // Nếu đã yêu thích, gọi API xóa khỏi yêu thích
-      const res = await productService.deleteFavoriteProduct(accountId, product.productId);
-      if (res.data.status) {
-        toast.success(res.data.message);
-        setIsFavorite(false);
-      } else {
-        toast.error(res.data.message);
-      }
+  /** Hàm xử lý thêm/bỏ sản phẩm vào danh sách yêu thích */
+  const handleFavorite = async () => {
+    if (!product) {
+      toast.error("Sản phẩm không tồn tại!");
+      return;
     }
-  } catch (error: any) {
-    console.error("Error toggling favorite:", error);
-    toast.error("Có lỗi xảy ra khi thay đổi yêu thích!");
-  }
-};
-
-  
+    const accId = getCookie("accountId");
+    if (!accId) {
+      toast.error("Bạn chưa đăng nhập!");
+      router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+      return;
+    }
+    const accountId = Number(accId);
+    try {
+      if (!isFavorite) {
+        const res = await productService.postFavoriteProduct(accountId, product.productId);
+        if (res.data.status) {
+          toast.success(res.data.message);
+          setIsFavorite(true);
+        } else {
+          toast.error(res.data.message);
+        }
+      } else {
+        const res = await productService.deleteFavoriteProduct(accountId, product.productId);
+        if (res.data.status) {
+          toast.success(res.data.message);
+          setIsFavorite(false);
+        } else {
+          toast.error(res.data.message);
+        }
+      }
+    } catch (error: any) {
+      console.error("Error toggling favorite:", error);
+      toast.error("Có lỗi xảy ra khi thay đổi yêu thích!");
+    }
+  };
 
   // Nếu sản phẩm chưa load xong => hiển thị loading
   if (!product) {
@@ -319,10 +358,15 @@ const handleFavorite = async () => {
     );
   }
 
-  // Tính tạm subtotal
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const subtotal = cartItems.reduce((sum, item) => sum + item.discountedPrice * item.quantity, 0);
 
-  // Hiển thị variant: nếu chưa chọn variant thì dùng variant mặc định (variant đầu tiên)
+  // Nếu chưa chọn variant, bạn có thể cho phép người dùng chọn (hoặc thông báo yêu cầu chọn)
+  const isOutOfStock =
+    selectedVariant && selectedVariant.stockQuantity !== null
+      ? selectedVariant.stockQuantity === 0
+      : false;
+
+  // Nếu chưa chọn variant thì hiển thị variant mặc định (đầu tiên)
   const displayedVariant =
     selectedVariant || (product.variants.length > 0 ? product.variants[0] : null);
 
@@ -332,7 +376,7 @@ const handleFavorite = async () => {
 
       <main className="flex-1 px-6 pt-24 lg:px-20 relative">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-10">
-          {/* Cột trái: hình ảnh */}
+          {/* Cột trái: Hình ảnh sản phẩm */}
           <div className="flex-1">
             <div className="overflow-hidden relative border group">
               <ZoomableImage src={selectedImage} alt={product.name} />
@@ -358,9 +402,8 @@ const handleFavorite = async () => {
             )}
           </div>
 
-          {/* Cột phải: thông tin sản phẩm */}
+          {/* Cột phải: Thông tin sản phẩm */}
           <div className="flex-1">
-            {/* Tên sản phẩm */}
             <h1 className="text-2xl font-medium mb-4">{product.name}</h1>
 
             {/* Chọn size */}
@@ -370,10 +413,10 @@ const handleFavorite = async () => {
                 {Array.from(new Set(product.variants.map((v) => v.size))).map((size) => (
                   <button
                     key={size}
+                    onClick={() => handleSizeChange(size)}
                     className={`px-4 py-2 border font-medium ${
                       selectedSize === size ? "bg-gray-200" : "hover:bg-gray-100"
                     }`}
-                    onClick={() => handleSizeChange(size)}
                   >
                     {size}
                   </button>
@@ -388,11 +431,11 @@ const handleFavorite = async () => {
                 {Array.from(new Set(product.variants.map((v) => v.color))).map((color) => (
                   <button
                     key={color}
+                    onClick={() => handleColorChange(color)}
                     className={`w-8 h-8 border-2 ${
                       selectedColor === color ? "border-black" : "border-gray-300"
                     }`}
                     style={{ backgroundColor: color }}
-                    onClick={() => handleColorChange(color)}
                   />
                 ))}
               </div>
@@ -402,11 +445,9 @@ const handleFavorite = async () => {
             <div className="mt-4">
               {displayedVariant && displayedVariant.discountedPrice < displayedVariant.price ? (
                 <div className="flex items-center gap-2 mt-1">
-                  {/* Giá đã giảm */}
                   <span className="text-lg font-semibold text-black">
                     {displayedVariant.discountedPrice.toLocaleString("vi-VN")}VND
                   </span>
-                  {/* Badge phần trăm giảm */}
                   <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded leading-none">
                     -{Math.round(
                       ((displayedVariant.price - displayedVariant.discountedPrice) /
@@ -415,7 +456,6 @@ const handleFavorite = async () => {
                     )}
                     %
                   </span>
-                  {/* Giá gốc (gạch ngang) */}
                   <span className="text-lg text-gray-400 line-through">
                     {displayedVariant.price.toLocaleString("vi-VN")}VND
                   </span>
@@ -446,29 +486,34 @@ const handleFavorite = async () => {
               </button>
             </div>
 
-            {/* Nút thêm vào giỏ & Thêm vào yêu thích */}
+            {/* Nút thêm vào giỏ và Yêu thích */}
             <button
               onClick={handleAddToCart}
-              className="mt-6 w-full px-6 py-3 bg-[#222222B3] text-white font-semibold text-lg"
+              disabled={isOutOfStock}
+              className={`mt-6 w-full px-6 py-3 font-semibold text-lg ${
+                isOutOfStock
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "bg-[#222222B3] text-white"
+              }`}
             >
-              THÊM VÀO GIỎ HÀNG
+              {isOutOfStock ? "HẾT HÀNG" : "THÊM VÀO GIỎ HÀNG"}
             </button>
 
             <Button
               onClick={handleFavorite}
               icon={
-                isFavorite
-                  ? <AiFillHeart style={{ color: "red", fontSize: 20 }} />
-                  : <AiOutlineHeart style={{ color: "#eee", fontSize: 20 }} />
+                isFavorite ? (
+                  <AiFillHeart style={{ color: "red", fontSize: 20 }} />
+                ) : (
+                  <AiOutlineHeart style={{ color: "#eee", fontSize: 20 }} />
+                )
               }
-              className="mt-6 w-full px-6 py-3 bg-[#222222B3] text-white font-semibold text-lg flex items-center justify-center gap-2 borderRadius: 0"
+              className="mt-6 w-full px-6 py-3 bg-[#222222B3] text-white font-semibold text-lg flex items-center justify-center gap-2"
             >
               {isFavorite ? "ĐÃ YÊU THÍCH" : "THÊM VÀO YÊU THÍCH"}
             </Button>
 
-
-
-            {/* Cụm 3 dòng: Thông tin sản phẩm, Chính sách vận chuyển, Chính sách đổi trả */}
+            {/* Thông tin sản phẩm, Chính sách vận chuyển, Đổi trả */}
             <div className="mt-6 border-t pt-4 space-y-1">
               <button
                 onClick={() => setShowInfoDrawer(true)}
@@ -495,7 +540,7 @@ const handleFavorite = async () => {
           </div>
         </div>
 
-        {/* Khu vực đánh giá */}
+        {/* Khu vực đánh giá sản phẩm */}
         <div className="max-w-6xl mx-auto mt-10">
           <h2 className="text-xl font-bold mb-4">Đánh giá sản phẩm</h2>
           {feedbackList.length > 0 ? (
@@ -564,43 +609,72 @@ const handleFavorite = async () => {
                   {cartItems.map((item) => {
                     const itemTotal = item.discountedPrice * item.quantity;
                     return (
-                      <div key={item.productVariantId} className="border p-3 rounded flex">
-                        <img
-                          src={item.imagePath}
-                          alt={item.productName}
-                          className="w-20 h-20 object-cover"
-                        />
-                        <div className="ml-3 flex-1 flex flex-col justify-center">
-                          <p className="font-medium">{item.productName}</p>
-                          <p className="text-sm text-gray-500">
-                            Size: {item.size} | Màu:
-                            <span
-                              className="inline-block w-4 h-4 ml-1 border border-gray-300 align-middle"
-                              style={{ backgroundColor: item.color }}
-                            />
-                          </p>
-                          {item.discountedPrice && item.discountedPrice < item.price ? (
-                            <div className="text-sm flex items-center gap-2">
-                              <span className="text-lg font-semibold text-black">
-                                {item.discountedPrice.toLocaleString("vi-VN")}₫
-                              </span>
-                              <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded leading-none">
-                                -{Math.round(((item.price - item.discountedPrice) / item.price) * 100)}%
-                              </span>
-                              <span className="text-lg text-gray-400 line-through">
-                                {item.price.toLocaleString("vi-VN")}₫
-                              </span>
-                              <span className="ml-2">x {item.quantity}</span>
-                            </div>
-                          ) : (
-                            <p className="text-sm">
-                              {item.price.toLocaleString("vi-VN")}₫ x {item.quantity}
+                      <div
+                        key={item.productVariantId}
+                        className="border p-3 rounded flex items-center justify-between"
+                      >
+                        {/* Phần ảnh và thông tin sản phẩm */}
+                        <div className="flex items-center gap-4">
+                          <img
+                            src={item.imagePath}
+                            alt={item.productName}
+                            className="w-20 h-20 object-cover"
+                          />
+                          <div>
+                            <p className="font-medium">{item.productName}</p>
+                            <p className="text-sm text-gray-500">
+                              Size: {item.size} | Màu:{" "}
+                              <span
+                                className="inline-block w-4 h-4 ml-1 border border-gray-300 align-middle"
+                                style={{ backgroundColor: item.color }}
+                              />
                             </p>
-                          )}
-                          <p className="text-sm font-medium mt-1">
-                            {itemTotal.toLocaleString("vi-VN")}₫
-                          </p>
+                            {/* Giá hiển thị với giảm giá (nếu có) */}
+                            {item.discountedPrice &&
+                            item.discountedPrice < item.price ? (
+                              <div className="text-sm flex items-center gap-2">
+                                <span className="text-lg font-semibold text-black">
+                                  {item.discountedPrice.toLocaleString("vi-VN")}₫
+                                </span>
+                                <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded leading-none">
+                                  -{Math.round(((item.price - item.discountedPrice) / item.price) * 100)}%
+                                </span>
+                                <span className="text-lg text-gray-400 line-through">
+                                  {item.price.toLocaleString("vi-VN")}₫
+                                </span>
+                                <span className="ml-2">x {item.quantity}</span>
+                              </div>
+                            ) : (
+                              <p className="text-sm">
+                                {item.price.toLocaleString("vi-VN")}₫ x {item.quantity}
+                              </p>
+                            )}
+                            <p className="text-sm font-medium mt-1">
+                              {itemTotal.toLocaleString("vi-VN")}₫
+                            </p>
+                            {/* Nút tăng/giảm số lượng */}
+                            <div className="flex items-center gap-2 mt-1">
+                              <button
+                                onClick={() =>
+                                  handleEditQuantity(item.productVariantId, -1)
+                                }
+                                className="px-2 py-1 border text-sm"
+                              >
+                                -
+                              </button>
+                              <span className="text-sm">{item.quantity}</span>
+                              <button
+                                onClick={() =>
+                                  handleEditQuantity(item.productVariantId, 1)
+                                }
+                                className="px-2 py-1 border text-sm"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
                         </div>
+                        {/* Nút xóa sản phẩm */}
                         <button
                           onClick={() => handleRemoveItem(item.productVariantId)}
                           className="text-red-500 hover:text-red-700 ml-2"
@@ -617,9 +691,7 @@ const handleFavorite = async () => {
                   </p>
                   <div className="flex items-center justify-between mb-4">
                     <span className="font-medium">Tạm tính</span>
-                    <span className="font-medium">
-                      {subtotal.toLocaleString("vi-VN")}₫
-                    </span>
+                    <span className="font-medium">{subtotal.toLocaleString("vi-VN")}₫</span>
                   </div>
                   <button
                     onClick={() => {
@@ -661,9 +733,7 @@ const handleFavorite = async () => {
                 <p className="mb-2">Material: {product.material}</p>
                 <div className="mb-2">
                   <span>Description:</span>
-                  <p className="text-gray-600 whitespace-pre-line mt-1">
-                    {product.description}
-                  </p>
+                  <p className="text-gray-600 whitespace-pre-line mt-1">{product.description}</p>
                 </div>
               </div>
             </div>

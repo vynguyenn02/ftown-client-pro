@@ -38,7 +38,6 @@ export default function AddressPage() {
   // Form fields
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
-  const [postalCode, setPostalCode] = useState("");
   const [detailAddress, setDetailAddress] = useState("");
   const [email, setEmail] = useState("");
   const [addressType, setAddressType] = useState<"home" | "office">("home");
@@ -145,7 +144,6 @@ export default function AddressPage() {
       province: provinces.find((p: any) => p.code === selectedProvince)?.name || "",
       district: districts.find((d: any) => d.code === selectedDistrict)?.name || "",
       country: "Vietnam",
-      postalCode: postalCode,
       recipientName: fullName,
       recipientPhone: phone,
       email: email,
@@ -191,7 +189,6 @@ export default function AddressPage() {
   const resetForm = () => {
     setFullName("");
     setPhone("");
-    setPostalCode("");
     setDetailAddress("");
     setEmail("");
     setAddressType("home");
@@ -312,17 +309,6 @@ export default function AddressPage() {
                         placeholder="Nhập email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                      />
-                    </div>
-                    {/* Mã bưu điện */}
-                    <div>
-                      <label className="block text-black">Mã bưu điện</label>
-                      <input
-                        type="text"
-                        className="w-full p-2 border border-gray-300"
-                        placeholder="Nhập mã bưu điện"
-                        value={postalCode}
-                        onChange={(e) => setPostalCode(e.target.value)}
                       />
                     </div>
                     {/* Địa chỉ chi tiết */}

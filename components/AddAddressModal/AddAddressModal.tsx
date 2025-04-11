@@ -192,13 +192,6 @@
                         ))}
                     </Select>
                     </Form.Item>
-                    <Form.Item
-                    name="postalCode"
-                    label="Mã bưu điện"
-                    rules={[{ required: true, message: "Vui lòng nhập mã bưu điện" }]}
-                    >
-                    <Input />
-                    </Form.Item>
                     <Form.Item>
                     <Button
                     type="primary"
