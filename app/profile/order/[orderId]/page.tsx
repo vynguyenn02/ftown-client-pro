@@ -95,18 +95,28 @@ export default function OrderDetailPage() {
           {/* Cột phải: nội dung chi tiết đơn hàng */}
           <div className="flex-1 space-y-4">
             
-            {/* Phần đầu: Thông tin cơ bản đơn hàng */}
-            <div className="bg-white p-4 shadow">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-lg font-semibold">
-                  Đơn hàng {orderDate}/{orderTime} #{order.orderId}
-                </h2>
-                <span className="text-green-500 text-sm">{orderStatus}</span>
-              </div>
-              <p className="text-sm text-gray-500">
-                Rất mong được phục vụ bạn trong lần tới.
-              </p>
-            </div>
+           {/* Phần đầu: Thông tin cơ bản đơn hàng */}
+        <div className="bg-white p-4 shadow">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-lg font-semibold">
+              Đơn hàng{" "}
+              {new Date(order.createdDate).toLocaleDateString("vi-VN", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })}{" "}
+              {new Date(order.createdDate).toLocaleTimeString("vi-VN", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}{" "}
+              #{order.orderId}
+            </h2>
+            <span className="text-green-500 text-sm">{order.status}</span>
+          </div>
+          <p className="text-sm text-gray-500">
+            Rất mong được phục vụ bạn trong lần tới.
+          </p>
+        </div>
 
             {/* Thông tin người nhận + địa chỉ */}
             <div className="bg-white p-4 shadow">

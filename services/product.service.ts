@@ -8,7 +8,8 @@ export const END_POINT = {
   GET_PRODUCT_BYID: "/products/{productId}",
   POST_FAVORITE_PRODUCT: "/favorites/{accountId}/{productId}",
   DELETE_FAVORITE_PRODUCT: "/favorites/{accountId}/{productId}",
-  GET_ALL_FAVORITE_PRODUCT: "/favorites/{accountId}"
+  GET_ALL_FAVORITE_PRODUCT: "/favorites/{accountId}",
+  GET_ALL_PRODUCT_BY_CATEGORY: "/products/filter-by-category",
 
 };
 
@@ -43,6 +44,18 @@ class ProductService {
       .replace("{accountId}", String(accountId))
       .replace("{productId}", String(productId));
     return remove(url);
+  }
+  getAllProductsByCategory(
+    categoryName: string,
+    page = 1,
+    pageSize = 30
+  ): Promise<AxiosResponse<ProductListResponse>> {
+    // encodeURIComponent để tránh lỗi khi categoryName có dấu hoặc ký tự đặc biệt
+    const url = `${END_POINT.GET_ALL_PRODUCT_BY_CATEGORY}?categoryName=${encodeURIComponent(
+      categoryName
+    )}&page=${page}&pageSize=${pageSize}`;
+
+    return get(url);
   }
 }
 

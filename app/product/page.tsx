@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Header from "@/components/Header/Header";
 import Footer from "@/components/Footer/Footer";
 import BestSeller from "@/components/BestSeller/BestSeller";
@@ -15,15 +15,30 @@ const formatPrice = (price: number) => {
 
 export default function ProductPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Lấy giá trị category từ URL nếu có (ví dụ: /products?category=áo)
+  const initialCategory = searchParams.get("category") || "";
+
   const [products, setProducts] = useState<Product[]>([]);
   const [filterText, setFilterText] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
 
-  // Lấy sản phẩm
+  // Mỗi khi query params thay đổi, cập nhật lại state selectedCategory.
+  useEffect(() => {
+    const categoryFromQuery = searchParams.get("category") || "";
+    setSelectedCategory(categoryFromQuery);
+  }, [searchParams]);
+
+  // Gọi API mỗi khi selectedCategory thay đổi
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await productService.getAllProducts(1, 30);
+        let response;
+        if (selectedCategory) {
+          response = await productService.getAllProductsByCategory(selectedCategory, 1, 30);
+        } else {
+          response = await productService.getAllProducts(1, 30);
+        }
         console.log("Full Response:", response);
         console.log("Fetched Products:", response.data);
         setProducts(response.data.data);
@@ -33,16 +48,12 @@ export default function ProductPage() {
     };
 
     fetchProducts();
-  }, []);
+  }, [selectedCategory]);
 
-  // Lọc sản phẩm theo tên và category (không phân biệt chữ hoa chữ thường)
-  const filteredProducts = products.filter((product) => {
-    const matchName = product.name.toLowerCase().includes(filterText.toLowerCase());
-    const matchCategory = selectedCategory
-      ? product.categoryName.toLowerCase() === selectedCategory.toLowerCase()
-      : true;
-    return matchName && matchCategory;
-  });
+  // Lọc sản phẩm theo tên (tìm kiếm trên client)
+  const filteredProducts = products.filter((product) =>
+    product.name.toLowerCase().includes(filterText.toLowerCase())
+  );
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -60,7 +71,9 @@ export default function ProductPage() {
       <main className="flex-1 px-6 pt-10 lg:px-20">
         {/* Header section với tiêu đề và ô lọc */}
         <div className="flex justify-between items-center border-b pb-3 mb-6">
-          <h2 className="text-lg font-bold uppercase">Sản phẩm</h2>
+          <h2 className="text-lg font-bold uppercase">
+            Sản phẩm {selectedCategory ? `- ${selectedCategory}` : ""}
+          </h2>
           <div className="flex items-center">
             <input
               type="text"
@@ -71,14 +84,19 @@ export default function ProductPage() {
             />
             <select
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              onChange={(e) => {
+                const category = e.target.value;
+                setSelectedCategory(category);
+                // Đồng bộ URL với lựa chọn của người dùng
+                router.push(`/product?category=${encodeURIComponent(category)}`);
+              }}
               className="border border-gray-300 px-3 py-1 ml-3"
             >
               <option value="">Tất cả</option>
               <option value="áo">Áo</option>
               <option value="quần">Quần</option>
               <option value="áo khoác">Áo khoác</option>
-              {/* Thêm các lựa chọn khác nếu cần */}
+              <option value="phụ kiện">Phụ kiện</option>
             </select>
           </div>
         </div>
@@ -111,15 +129,12 @@ export default function ProductPage() {
                 {/* Giá sản phẩm */}
                 {product.discountedPrice && product.discountedPrice < product.price ? (
                   <div className="flex items-baseline justify-center gap-2 mt-1">
-                    {/* Giá đã giảm */}
                     <span className="text-base md:text-lg font-semibold text-black">
                       {formatPrice(product.discountedPrice)}
                     </span>
-                    {/* Badge giảm giá */}
                     <span className="bg-blue-600 text-white text-xs px-1 md:px-2 py-0.5 rounded">
                       -{discountPercent}%
                     </span>
-                    {/* Giá gốc (gạch ngang) */}
                     <span className="text-sm md:text-base text-gray-400 line-through">
                       {formatPrice(product.price)}
                     </span>

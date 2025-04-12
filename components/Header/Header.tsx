@@ -76,6 +76,24 @@ export default function Header() {
       bc.onmessage = (ev) => {
         if (ev.data === "logout") {
           setCartCount(0);
+        } else if (ev.data === "cartUpdated") {
+          const accId = getCookie("accountId");
+          if (accId) {
+            const accountId = Number(accId);
+            cartService.getCart(accountId)
+              .then((res) => {
+                if (res.data.status) {
+                  const total = res.data.data.reduce(
+                    (sum, item) => sum + item.quantity,
+                    0
+                  );
+                  setCartCount(total);
+                }
+              })
+              .catch((err) => {
+                console.error("Error updating cart count:", err);
+              });
+          }
         }
       };
     }
@@ -144,16 +162,28 @@ export default function Header() {
 
   const shopMenu = (
     <div className="absolute left-0 top-full hidden w-44 bg-transparent text-black shadow-lg border border-gray-300 backdrop-blur-md group-hover:block">
-      <Link href="/tops" className="block px-4 py-2 hover:bg-gray-200">
+      <Link
+        href="/product?category=áo"
+        className="block px-4 py-2 hover:bg-gray-200"
+      >
         Áo
       </Link>
-      <Link href="/bottoms" className="block px-4 py-2 hover:bg-gray-200">
+      <Link
+        href="/product?category=quần"
+        className="block px-4 py-2 hover:bg-gray-200"
+      >
         Quần
       </Link>
-      <Link href="/accessories" className="block px-4 py-2 hover:bg-gray-200">
+      <Link
+        href="/product?category=áo khoác"
+        className="block px-4 py-2 hover:bg-gray-200"
+      >
         Áo khoác
       </Link>
-      <Link href="/bags" className="block px-4 py-2 hover:bg-gray-200">
+      <Link
+        href="/product?category=phụ kiện"
+        className="block px-4 py-2 hover:bg-gray-200"
+      >
         Phụ kiện
       </Link>
     </div>

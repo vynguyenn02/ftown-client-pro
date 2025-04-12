@@ -137,6 +137,8 @@ export default function CartPage() {
                 : item
             )
           );
+          // Phát thông điệp broadcast "cartUpdated"
+          bc?.postMessage("cartUpdated");
         } else {
           toast.error(res.data.message);
         }
@@ -183,7 +185,7 @@ export default function CartPage() {
       // Cập nhật UI ngay lập tức
       setCart(prevCart.filter(item => item.productVariantId !== productVariantId));
       setConfirmVisible(false);
-      
+  
       // Sau đó gọi API xóa sản phẩm
       const accId = getCookie("accountId");
       if (!accId) {
@@ -197,6 +199,8 @@ export default function CartPage() {
         .then((res) => {
           if (res.data.status) {
             toast.success(res.data.message);
+            // Phát thông điệp broadcast để cập nhật cartCount
+            bc?.postMessage("cartUpdated");
           } else {
             toast.error(res.data.message);
             // Nếu API báo lỗi, rollback lại state
@@ -212,6 +216,7 @@ export default function CartPage() {
     setConfirmVisible(true);
   };
   
+  
   // Hàm thực hiện xóa tất cả sản phẩm khỏi giỏ hàng
   const performRemoveAllItems = () => {
     const accId = getCookie("accountId");
@@ -221,17 +226,18 @@ export default function CartPage() {
     }
     const accountId = Number(accId);
     cartService
-    .removeAllCartItem(accountId)
-    .then((res) => {
-      if (res.data.status) {
-        toast.success(res.data.message);
-        setCart([]);
-      } else {
-        toast.error(res.data.message);
-      }
-    })
-    .catch(() => toast.error("Có lỗi xảy ra khi xóa tất cả sản phẩm!"));
-  
+      .removeAllCartItem(accountId)
+      .then((res) => {
+        if (res.data.status) {
+          toast.success(res.data.message);
+          setCart([]);
+          // Phát thông điệp broadcast để cập nhật cartCount
+          bc?.postMessage("cartUpdated");
+        } else {
+          toast.error(res.data.message);
+        }
+      })
+      .catch(() => toast.error("Có lỗi xảy ra khi xóa tất cả sản phẩm!"));
   };
 
   // Hàm xử lý xóa tất cả sản phẩm bằng modal xác nhận

@@ -27,6 +27,7 @@ import { Button } from "antd";
 
 // Import component ZoomableImage (phóng to ảnh)
 import ZoomableImage from "@/components/ZoomableImage/ZoomableImage";
+let bc: BroadcastChannel | null = null;
 
 /** Component hiển thị sao đánh giá (1-5) */
 function StarRating({ rating }: { rating: number }) {
@@ -232,14 +233,15 @@ export default function ProductDetailPage({ params }: { params: { productId: str
                 : item
             )
           );
+          // Gửi broadcast event cập nhật giỏ hàng
+          bc?.postMessage("cartUpdated");
         } else {
           toast.error(res.data.message);
         }
       })
       .catch(() => toast.error("Có lỗi xảy ra khi cập nhật số lượng!"));
   };
-
-  /** Hàm xóa 1 sản phẩm khỏi giỏ (gọi API removeCartItem) */
+  
   const handleRemoveItem = (productVariantId: number) => {
     const accId = getCookie("accountId");
     if (!accId) {
@@ -255,13 +257,14 @@ export default function ProductDetailPage({ params }: { params: { productId: str
           setCartItems((prev) =>
             prev.filter((i) => i.productVariantId !== productVariantId)
           );
+          // Gửi broadcast event cập nhật giỏ hàng
+          bc?.postMessage("cartUpdated");
         } else {
           toast.error(res.data.message);
         }
       })
       .catch(() => toast.error("Có lỗi xảy ra khi xóa sản phẩm!"));
-  };
-
+  };  
   /** Thêm sản phẩm vào giỏ */
   const handleAddToCart = async () => {
     const accId = getCookie("accountId");
@@ -279,13 +282,13 @@ export default function ProductDetailPage({ params }: { params: { productId: str
       toast.error("Sản phẩm không tồn tại!");
       return;
     }
-
+  
     const variantPrice =
       selectedVariant.discountedPrice &&
       selectedVariant.discountedPrice < selectedVariant.price
         ? selectedVariant.discountedPrice
         : selectedVariant.price;
-
+  
     try {
       const payload = {
         productId: product.productId,
@@ -299,6 +302,8 @@ export default function ProductDetailPage({ params }: { params: { productId: str
         toast.success(res.data.message);
         await fetchCart(accountId);
         setShowDrawer(true);
+        // Phát event để Header cập nhật cart count
+        bc?.postMessage("cartUpdated");
       } else {
         toast.error(res.data.message);
       }
@@ -307,6 +312,7 @@ export default function ProductDetailPage({ params }: { params: { productId: str
       toast.error(err.response?.data?.message || "Có lỗi xảy ra khi thêm vào giỏ hàng!");
     }
   };
+  
 
   /** Hàm xử lý thêm/bỏ sản phẩm vào danh sách yêu thích */
   const handleFavorite = async () => {
@@ -599,7 +605,7 @@ export default function ProductDetailPage({ params }: { params: { productId: str
                   <AiOutlineClose className="text-xl" />
                 </button>
               </div>
-              <div className="p-4 flex-1 flex flex-col justify-between">
+              <div className="p-4 flex-1 flex flex-col justify-between overflow-y-auto">
                 <p className="text-sm text-center mb-4">
                   Cảm ơn bạn đã tin tưởng FUNKYTOWN
                   <br />

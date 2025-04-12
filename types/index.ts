@@ -190,7 +190,7 @@ export type CreateShippingAddressRequest = {
   country: string;
   recipientName: string;
   recipientPhone: string;
-  email?: string;
+  email: string;
   isDefault: boolean;
 }
 // Nếu backend trả về địa chỉ mới với đầy đủ trường của ShippingAddress
@@ -199,7 +199,23 @@ export type CreateShippingAddressResponse = {
   status: boolean;
   message: string;
 };
-
+export type UpdateShippingAddressRequest = {
+  accountId: number;
+  address: string;
+  city: string;
+  province: string;
+  district: string;
+  country: string;
+  recipientName: string;
+  recipientPhone: string;
+  email: string;
+  isDefault: boolean;
+}
+export type UpdateShippingAddressResponse = {
+  data: ShippingAddress;  // <-- Sửa chỗ này thành ShippingAddress
+  status: boolean;
+  message: string;  
+};
 export type ShippingAddress = {
   addressId: number
   accountId: number;
@@ -208,7 +224,7 @@ export type ShippingAddress = {
   province: string;
   district: string;
   country: string;
-  postalCode: string;
+  postalCode?: string;
   recipientName: string;
   recipientPhone: string;
   email: string;
@@ -358,6 +374,8 @@ export type OrderDetailData = {
   store: StoreInfo | null;    // BE trả về store, có thể là null nếu ko có
   orderTotal: number;
   shippingCost: number;
+  status: string;
+  createdDate: string;
   orderItems: OrderDetailItem[];
 };
 
