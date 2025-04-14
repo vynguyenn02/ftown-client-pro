@@ -46,7 +46,8 @@ const Sidebar: React.FC = () => {
         width={400}
         style={{
           background: "#fff",
-          minHeight: "100vh",
+          // Loại bỏ minHeight để sidebar tự điều chỉnh theo container cha
+          // Nếu muốn cố định theo chiều cao của container, có thể dùng height: "100%"
           boxShadow: "2px 0 5px rgba(0,0,0,0.1)",
         }}
       >
@@ -60,18 +61,15 @@ const Sidebar: React.FC = () => {
             borderBottom: "1px solid #f0f0f0",
           }}
         >
-          {/* Nếu có imagePath thì hiển thị ảnh, không thì hiển thị icon */}
           {profile?.imagePath ? (
             <Avatar size={48} src={profile.imagePath} />
           ) : (
             <Avatar size={48} icon={<UserOutlined />} />
           )}
           <div>
-            {/* Hiển thị fullname, nếu không có thì mặc định "Guest User" */}
             <div style={{ fontWeight: 600 }}>
               {profile?.fullName || "Guest User"}
             </div>
-            {/* Có thể hiển thị thêm email hoặc vai trò tại đây */}
             <div style={{ fontSize: 12, color: "#999" }}>
               {profile?.email || "No email"}
             </div>
@@ -107,11 +105,8 @@ const Sidebar: React.FC = () => {
 
           {/* Yêu thích */}
           <Menu.ItemGroup key="group3" title="Yêu thích">
-            <Menu.Item key="/profile/favorite" icon={<HeartOutlined />}>
-              Danh sách yêu thích
-            </Menu.Item>
-            <Menu.Item key="/profile/style" icon={<StarOutlined />}>
-              Phong cách phối đồ
+            <Menu.Item key="/favorite" icon={<HeartOutlined />}>
+            <Link href="/favorite">Sản phẩm yêu thích</Link>
             </Menu.Item>
           </Menu.ItemGroup>
         </Menu>

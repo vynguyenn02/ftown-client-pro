@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header/Header";
@@ -12,16 +11,15 @@ import toast from "react-hot-toast";
 // Import các hàm từ thư viện pc-vn (dùng require để tránh lỗi .d.ts)
 const { getProvinces, getDistrictsByProvinceCode, getWardsByDistrictCode } = require("pc-vn");
 
-// Định nghĩa kiểu địa chỉ hiển thị trên giao diện (mapping các field theo API)
 type AddressItem = {
   id: number;
-  name: string;       // Tên người nhận
+  name: string;
   phone: string;
-  country: string;    // Quốc gia
-  province: string;   // Tên Tỉnh/Thành phố
-  district: string;   // Tên Quận/Huyện
-  ward: string;       // Tên Phường/Xã (dùng làm city trong request)
-  detail: string;     // Địa chỉ chi tiết
+  country: string;
+  province: string;
+  district: string;
+  ward: string;
+  detail: string;
   email?: string;
   addressType?: "home" | "office";
   isDefault?: boolean;
@@ -33,10 +31,8 @@ export default function AddressPage() {
   // Danh sách địa chỉ từ API
   const [addresses, setAddresses] = useState<AddressItem[]>([]);
   
-  // State điều khiển hiển thị Drawer (popup) cho Thêm/Sửa địa chỉ
+  // State hiển thị Drawer cho thêm/sửa địa chỉ
   const [showDrawer, setShowDrawer] = useState(false);
-
-  // State để kiểm soát chế độ sửa hay thêm: nếu có giá trị thì đang ở chế độ sửa
   const [editingAddress, setEditingAddress] = useState<AddressItem | null>(null);
 
   // Các state của form
@@ -47,7 +43,12 @@ export default function AddressPage() {
   const [addressType, setAddressType] = useState<"home" | "office">("home");
   const [isDefault, setIsDefault] = useState(false);
 
-  // States cho dropdown địa chỉ dựa trên thư viện pc-vn
+  // State để lưu thông báo lỗi cho từng trường
+  const [fullNameError, setFullNameError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+  const [emailError, setEmailError] = useState("");
+
+  // States cho dropdown địa chỉ từ thư viện pc-vn
   const [provinces, setProvinces] = useState<any[]>([]);
   const [districts, setDistricts] = useState<any[]>([]);
   const [wards, setWards] = useState<any[]>([]);
@@ -55,7 +56,49 @@ export default function AddressPage() {
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [selectedWard, setSelectedWard] = useState("");
 
-  // Lấy danh sách tỉnh khi khởi chạy trang
+  // Các hàm xử lý validate ngay khi người dùng nhập
+  const handleFullNameChange = (value: string) => {
+    setFullName(value);
+    if (!/^[\p{L}\s]+$/u.test(value)) {
+      setFullNameError("Họ và tên chỉ được chứa chữ và khoảng trắng, không cho phép số.");
+    } else {
+      setFullNameError("");
+    }
+  };
+
+  const handlePhoneChange = (value: string) => {
+    setPhone(value);
+    if (!/^\d{10}$/.test(value)) {
+      setPhoneError("Số điện thoại phải chứa đúng 10 số.");
+    } else {
+      setPhoneError("");
+    }
+  };
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (!/^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(value)) {
+      setEmailError("Email phải có định dạng hợp lệ, ví dụ: example@gmail.com.");
+    } else {
+      setEmailError("");
+    }
+  };
+
+  // Hàm validate tổng hợp khi bấm nút (nếu cần kiểm tra thêm các trường khác)
+  const validateForm = () => {
+    if (fullNameError || phoneError || emailError) {
+      toast.error("Vui lòng chỉnh sửa các lỗi trước khi lưu!");
+      return false;
+    }
+    // Ngoài ra, nếu các trường rỗng thì cũng có thể thông báo lỗi
+    if (!fullName || !phone || !email) {
+      toast.error("Vui lòng điền đầy đủ các trường cần thiết.");
+      return false;
+    }
+    return true;
+  };
+
+  // Lấy danh sách tỉnh
   useEffect(() => {
     const fetchProvinces = async () => {
       const provs = await getProvinces();
@@ -75,7 +118,6 @@ export default function AddressPage() {
     } else {
       setDistricts([]);
     }
-    // Reset district và ward khi thay đổi tỉnh
     setSelectedDistrict("");
     setWards([]);
     setSelectedWard("");
@@ -92,11 +134,10 @@ export default function AddressPage() {
     } else {
       setWards([]);
     }
-    // Reset ward khi thay đổi quận/huyện
     setSelectedWard("");
   }, [selectedDistrict]);
 
-  // Khi danh sách địa chỉ từ BE load, mapping dữ liệu trả về sang kiểu AddressItem
+  // Lấy danh sách địa chỉ từ API và mapping dữ liệu
   useEffect(() => {
     const accountId = Number(getCookie("accountId"));
     if (!accountId) {
@@ -107,19 +148,18 @@ export default function AddressPage() {
     ProfileService.getShippingAddress(accountId)
       .then((res) => {
         if (res.data.status) {
-          // Giả sử BE trả về mảng đối tượng và mỗi đối tượng có các trường được mapping
           const mappedAddresses: AddressItem[] = res.data.data.map((item: any) => ({
-            id: item.addressId, // giả sử BE trả về trường id (hoặc addressId tùy API)
+            id: item.addressId,
             name: item.recipientName,
             phone: item.recipientPhone,
             country: item.country,
             province: item.province,
             district: item.district,
-            ward: item.city, // sử dụng trường city làm tên phường/xã
+            ward: item.city,
             detail: item.address,
             email: item.email,
             isDefault: item.isDefault,
-            addressType: item.addressType, // nếu có
+            addressType: item.addressType,
           }));
           setAddresses(mappedAddresses);
         } else {
@@ -132,7 +172,7 @@ export default function AddressPage() {
       });
   }, [router]);
 
-  // Khi đang ở chế độ sửa và danh sách các quận/huyện được load, tự động chọn quận/huyện dựa trên dữ liệu editingAddress
+  // Khi đang ở chế độ sửa và danh sách quận/huyện đã load
   useEffect(() => {
     if (editingAddress && districts.length > 0) {
       const districtObj = districts.find((d: any) => d.name === editingAddress.district);
@@ -142,7 +182,6 @@ export default function AddressPage() {
     }
   }, [districts, editingAddress]);
 
-  // Hàm reset form sau khi thêm/sửa
   const resetForm = () => {
     setFullName("");
     setPhone("");
@@ -153,82 +192,24 @@ export default function AddressPage() {
     setSelectedProvince("");
     setSelectedDistrict("");
     setSelectedWard("");
-    // Reset trạng thái sửa
     setEditingAddress(null);
+    // Reset thông báo lỗi
+    setFullNameError("");
+    setPhoneError("");
+    setEmailError("");
   };
 
-  // Xử lý lưu địa chỉ mới (create)
+  // Xử lý tạo địa chỉ mới
   const handleSaveAddress = async () => {
+    if (!validateForm()) return;
     const accountId = Number(getCookie("accountId"));
     if (!accountId) {
       toast.error("Bạn chưa đăng nhập!");
       router.push("/login");
       return;
     }
-
-    // Tạo đối tượng request theo kiểu CreateShippingAddressRequest
     const request = {
-      accountId: accountId,
-      address: detailAddress,
-      city: selectedWard, // Dùng phường/xã làm "city"
-      province: provinces.find((p: any) => p.code === selectedProvince)?.name || "",
-      district: districts.find((d: any) => d.code === selectedDistrict)?.name || "",
-      country: "Vietnam",
-      recipientName: fullName,
-      recipientPhone: phone,
-      email: email,
-      isDefault: isDefault,
-    };
-
-    try {
-      const response = await ProfileService.createShippingAddress(request);
-      if (response.data.status) {
-        toast.success("Thêm địa chỉ thành công!");
-
-        // Nếu API trả về thành công, cập nhật danh sách địa chỉ
-        const newAddress: AddressItem = {
-          id: Date.now(), // Hoặc lấy id từ response nếu có
-          name: fullName,
-          phone: phone,
-          country: "Vietnam",
-          province: request.province,
-          district: request.district,
-          ward: selectedWard,
-          detail: detailAddress,
-          email: email,
-          isDefault: isDefault,
-          addressType: addressType,
-        };
-        setAddresses((prev) => {
-          if (isDefault) {
-            // Nếu thêm mới địa chỉ mặc định, cập nhật lại các địa chỉ khác
-            return [...prev.map(addr => ({ ...addr, isDefault: false })), newAddress];
-          }
-          return [...prev, newAddress];
-        });
-        resetForm();
-        setShowDrawer(false);
-      } else {
-        toast.error(`Lỗi tạo địa chỉ: ${response.data.message}`);
-        console.error("Error creating shipping address:", response.data.message);
-      }
-    } catch (error: any) {
-      toast.error(`Error calling createShippingAddress API: ${error?.message || error}`);
-      console.error("Error calling createShippingAddress API:", error);
-    }
-  };
-
-  // Xử lý cập nhật địa chỉ (update)
-  const handleUpdateAddress = async () => {
-    const accountId = Number(getCookie("accountId"));
-    if (!accountId || !editingAddress) {
-      toast.error("Bạn chưa đăng nhập hoặc không có địa chỉ để sửa!");
-      router.push("/login");
-      return;
-    }
-
-    const request = {
-      accountId: accountId,
+      accountId,
       address: detailAddress,
       city: selectedWard,
       province: provinces.find((p: any) => p.code === selectedProvince)?.name || "",
@@ -236,31 +217,82 @@ export default function AddressPage() {
       country: "Vietnam",
       recipientName: fullName,
       recipientPhone: phone,
-      email: email,
-      isDefault: isDefault,
+      email,
+      isDefault,
     };
 
     try {
-      // Lưu ý: Sử dụng API updateShippingAddress đã tích hợp endpoint (với {id} là address id)
+      const response = await ProfileService.createShippingAddress(request);
+      if (response.data.status) {
+        toast.success("Thêm địa chỉ thành công!");
+        const newAddress: AddressItem = {
+          id: Date.now(),
+          name: fullName,
+          phone,
+          country: "Vietnam",
+          province: request.province,
+          district: request.district,
+          ward: selectedWard,
+          detail: detailAddress,
+          email,
+          isDefault,
+          addressType,
+        };
+        setAddresses((prev) => 
+          isDefault
+            ? [...prev.map(addr => ({ ...addr, isDefault: false })), newAddress]
+            : [...prev, newAddress]
+        );
+        resetForm();
+        setShowDrawer(false);
+      } else {
+        toast.error(`Lỗi tạo địa chỉ: ${response.data.message}`);
+      }
+    } catch (error: any) {
+      toast.error(`Error calling createShippingAddress API: ${error?.message || error}`);
+    }
+  };
+
+  // Xử lý cập nhật địa chỉ
+  const handleUpdateAddress = async () => {
+    if (!validateForm()) return;
+    const accountId = Number(getCookie("accountId"));
+    if (!accountId || !editingAddress) {
+      toast.error("Bạn chưa đăng nhập hoặc không có địa chỉ để sửa!");
+      router.push("/login");
+      return;
+    }
+    const request = {
+      accountId,
+      address: detailAddress,
+      city: selectedWard,
+      province: provinces.find((p: any) => p.code === selectedProvince)?.name || "",
+      district: districts.find((d: any) => d.code === selectedDistrict)?.name || "",
+      country: "Vietnam",
+      recipientName: fullName,
+      recipientPhone: phone,
+      email,
+      isDefault,
+    };
+
+    try {
       const response = await ProfileService.updateShippingAddress(editingAddress.id, request);
       if (response.data.status) {
         toast.success("Cập nhật địa chỉ thành công!");
-
-        // Cập nhật lại danh sách địa chỉ với dữ liệu mới
         setAddresses((prev) =>
           prev.map((addr) =>
             addr.id === editingAddress.id
               ? {
                   ...addr,
                   name: fullName,
-                  phone: phone,
+                  phone,
                   detail: detailAddress,
                   province: request.province,
                   district: request.district,
                   ward: selectedWard,
-                  email: email,
-                  isDefault: isDefault,
-                  addressType: addressType,
+                  email,
+                  isDefault,
+                  addressType,
                 }
               : isDefault ? { ...addr, isDefault: false } : addr
           )
@@ -269,72 +301,45 @@ export default function AddressPage() {
         setShowDrawer(false);
       } else {
         toast.error(`Lỗi cập nhật địa chỉ: ${response.data.message}`);
-        console.error("Error updating shipping address:", response.data.message);
       }
     } catch (error: any) {
       toast.error(`Error calling updateShippingAddress API: ${error?.message || error}`);
-      console.error("Error calling updateShippingAddress API:", error);
     }
   };
 
-  // Xử lý khi người dùng bấm nút "Sửa": autofill form với dữ liệu của địa chỉ được chọn
-  // Lần đầu set tỉnh, quận khi người dùng bấm Sửa
-const handleEditAddress = (address: AddressItem) => {
-  setEditingAddress(address);
-  setShowDrawer(true);
-  // Autofill các trường
-  setFullName(address.name);
-  setPhone(address.phone);
-  setDetailAddress(address.detail);
-  setEmail(address.email || "");
-  setIsDefault(!!address.isDefault);
-  setAddressType(address.addressType || "home");
-  
-  // Tìm province code
-  const provinceObj = provinces.find((p: any) => p.name === address.province);
-  if (provinceObj) {
-    setSelectedProvince(provinceObj.code);
-  } else {
-    setSelectedProvince("");
-  }
-  
-  // Chưa set selectedWard ở đây. 
-  // Chỉ reset selectedDistrict, chờ useEffect chạy.
-  setSelectedDistrict("");
-};
+  const handleEditAddress = (address: AddressItem) => {
+    setEditingAddress(address);
+    setShowDrawer(true);
+    setFullName(address.name);
+    setPhone(address.phone);
+    setDetailAddress(address.detail);
+    setEmail(address.email || "");
+    setIsDefault(!!address.isDefault);
+    setAddressType(address.addressType || "home");
 
-// Sau đó, khi quận/huyện đã load -> wards được load -> new effect
-useEffect(() => {
-  // Chỉ thực thi nếu đang sửa và đã có wards
-  if (editingAddress && wards.length > 0) {
-    // Kiểm tra xem ward trả về từ BE có khớp với ward.name nào trong mảng wards không
-    const wardObj = wards.find((w: any) => w.name === editingAddress.ward);
-    if (wardObj) {
-      // Cuối cùng setSelectedWard bằng ward.name
-      setSelectedWard(wardObj.name);
-    } else {
-      // Nếu không tìm thấy, có thể setSelectedWard("")
-      setSelectedWard("");
+    const provinceObj = provinces.find((p: any) => p.name === address.province);
+    setSelectedProvince(provinceObj ? provinceObj.code : "");
+    setSelectedDistrict("");
+  };
+
+  useEffect(() => {
+    if (editingAddress && wards.length > 0) {
+      const wardObj = wards.find((w: any) => w.name === editingAddress.ward);
+      setSelectedWard(wardObj ? wardObj.name : "");
     }
-  }
-}, [wards, editingAddress]);
+  }, [wards, editingAddress]);
 
-
-  // Xử lý xóa địa chỉ (chỉ cập nhật giao diện, cần tích hợp API xóa nếu có)
   const handleDeleteAddress = async (id: number) => {
     try {
       const response = await ProfileService.removeShippingAddress(id);
       if (response.data.status) {
         toast.success("Xóa địa chỉ thành công!");
-        // Cập nhật lại danh sách địa chỉ trên giao diện
         setAddresses((prev) => prev.filter((a) => a.id !== id));
       } else {
         toast.error(`Lỗi xóa địa chỉ: ${response.data.message}`);
-        console.error("Error removing shipping address:", response.data.message);
       }
     } catch (error: any) {
       toast.error(`Error calling removeShippingAddress API: ${error?.message || error}`);
-      console.error("Error calling removeShippingAddress API:", error);
     }
   };
 
@@ -344,14 +349,12 @@ useEffect(() => {
       <main className="flex flex-1 justify-center pt-20">
         <div className="container mx-auto flex gap-8 p-6">
           <Sidebar />
-          {/* Nội dung: Sổ địa chỉ */}
           <section className="w-3/4 bg-white p-6 shadow-md relative">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold text-gray-700">Quản lý sổ địa chỉ</h2>
               <button
                 className="bg-black text-white px-4 py-2 hover:bg-gray-800 transition"
                 onClick={() => {
-                  // Nếu đang ở chế độ sửa, reset form để thêm mới
                   resetForm();
                   setShowDrawer(true);
                 }}
@@ -360,9 +363,8 @@ useEffect(() => {
               </button>
             </div>
 
-            {/* Danh sách địa chỉ */}
             <div className="space-y-4">
-                          {addresses.map((addr) => (
+              {addresses.map((addr) => (
                 <div key={addr.id} className="bg-white p-4 rounded-md shadow">
                   <div className="flex justify-between">
                     <div>
@@ -371,11 +373,11 @@ useEffect(() => {
                       <p className="text-gray-600">
                         {addr.detail}, {addr.district}, {addr.province}, {addr.country}
                       </p>
-                      <div className="flex items-center mt-2 space-x-2">
-                        {addr.isDefault && (
-                          <span className="bg-blue-100 text-blue-600 px-3 py-1 text-sm">Mặc định</span>
-                        )}
-                      </div>
+                      {addr.isDefault && (
+                        <span className="bg-blue-100 text-blue-600 px-3 py-1 text-sm">
+                          Mặc định
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center space-x-4">
                       <button
@@ -395,11 +397,10 @@ useEffect(() => {
                   </div>
                 </div>
               ))}
-             </div>
-            {/* Drawer cho thêm/sửa địa chỉ */}
+            </div>
+
             {showDrawer && (
               <>
-                {/* Overlay */}
                 <div
                   className="fixed inset-0 bg-black bg-opacity-50 z-40"
                   onClick={() => {
@@ -436,8 +437,11 @@ useEffect(() => {
                         className="w-full p-2 border border-gray-300"
                         placeholder="Nhập họ và tên"
                         value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
+                        onChange={(e) => handleFullNameChange(e.target.value)}
                       />
+                      {fullNameError && (
+                        <p className="text-red-500 text-sm">{fullNameError}</p>
+                      )}
                     </div>
                     {/* Số điện thoại */}
                     <div>
@@ -447,8 +451,11 @@ useEffect(() => {
                         className="w-full p-2 border border-gray-300"
                         placeholder="Nhập số điện thoại"
                         value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
+                        onChange={(e) => handlePhoneChange(e.target.value)}
                       />
+                      {phoneError && (
+                        <p className="text-red-500 text-sm">{phoneError}</p>
+                      )}
                     </div>
                     {/* Email */}
                     <div>
@@ -456,10 +463,13 @@ useEffect(() => {
                       <input
                         type="email"
                         className="w-full p-2 border border-gray-300"
-                        placeholder="Nhập email"
+                        placeholder="Nhập email (vd: example@gmail.com)"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => handleEmailChange(e.target.value)}
                       />
+                      {emailError && (
+                        <p className="text-red-500 text-sm">{emailError}</p>
+                      )}
                     </div>
                     {/* Địa chỉ chi tiết */}
                     <div>

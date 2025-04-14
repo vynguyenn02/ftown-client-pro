@@ -1,4 +1,3 @@
-// OrderPage.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -48,6 +47,7 @@ export default function OrderPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("ALL");
   const [searchValue, setSearchValue] = useState("");
+  const [showAll, setShowAll] = useState(false);
 
   // Fetch đơn hàng dựa trên activeTab
   const fetchOrders = () => {
@@ -86,6 +86,8 @@ export default function OrderPage() {
   };
 
   useEffect(() => {
+    // Mỗi khi activeTab thay đổi, reset showAll về false
+    setShowAll(false);
     fetchOrders();
   }, [activeTab, router]);
 
@@ -100,6 +102,9 @@ export default function OrderPage() {
     }
     return true;
   });
+
+  // Nếu chưa bật showAll, chỉ hiển thị 5 đơn hàng đầu tiên
+  const displayedOrders = showAll ? filteredOrders : filteredOrders.slice(0, 5);
 
   if (loading)
     return (
@@ -153,86 +158,95 @@ export default function OrderPage() {
             {filteredOrders.length === 0 ? (
               <p className="text-gray-500">Không có đơn hàng nào.</p>
             ) : (
-              filteredOrders.map((order) => (
-                // Bao bọc mỗi đơn hàng trong một Link để chuyển sang trang chi tiết đơn hàng
-                <Link key={order.orderId} href={`/profile/order/${order.orderId}`}>
-                  <div className="border p-4 mb-4 bg-white space-y-3 cursor-pointer hover:bg-gray-50">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                      <div className="flex flex-col text-gray-600">
-                        <span className="text-sm">Đơn hàng #{order.orderId}</span>
+              <>
+                {displayedOrders.map((order) => (
+                  <Link key={order.orderId} href={`/profile/order/${order.orderId}`}>
+                    <div className="border p-4 mb-4 bg-white space-y-3 cursor-pointer hover:bg-gray-50">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                        <div className="flex flex-col text-gray-600">
+                          <span className="text-sm">Đơn hàng #{order.orderId}</span>
+                        </div>
+                        <div>
+                          <span
+                            className={`border border-gray-300 px-2 py-1 text-sm font-medium ${getStatusColorClass(
+                              order.status
+                            )}`}
+                          >
+                            {order.status}
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <span
-                          className={`border border-gray-300 px-2 py-1 text-sm font-medium ${getStatusColorClass(
-                            order.status
-                          )}`}
+                      {order.items.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-3 border-b pb-2 mb-2 last:border-none last:mb-0 last:pb-0"
                         >
-                          {order.status}
-                        </span>
+                          <img
+                            src={
+                              item.imageUrl ||
+                              "https://via.placeholder.com/70x70?text=No+Image"
+                            }
+                            alt={item.productName || "Sản phẩm"}
+                            width={70}
+                            height={70}
+                            className="object-cover border"
+                          />
+                          <div className="flex flex-1 justify-between items-center">
+                            <div className="flex flex-col text-gray-700">
+                              <p className="font-semibold">{item.productName}</p>
+                              <p className="text-sm">
+                                Giá: {item.priceAtPurchase.toLocaleString("vi-VN")}đ
+                              </p>
+                              <p className="text-sm">Số lượng: {item.quantity}</p>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-gray-700">
+                              <span>Size: {item.size}</span>
+                              <div className="flex items-center gap-1">
+                                <span>Color:</span>
+                                <span
+                                  className="w-4 h-4 border border-gray-300 inline-block"
+                                  style={{ backgroundColor: item.color }}
+                                ></span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="flex items-center justify-between">
+                        <p className="text-gray-600">
+                          Tạm tính:{" "}
+                          <span className="font-semibold text-gray-800">
+                            {order.subTotal.toLocaleString("vi-VN")}đ
+                          </span>
+                        </p>
+                        <div className="flex gap-2">
+                          {order.status === "Pending Confirmed" && (
+                            <button className="bg-red-600 text-white px-4 py-2 font-semibold text-sm">
+                              Hủy Đơn
+                            </button>
+                          )}
+                          {order.status === "Completed" && (
+                            <button className="bg-blue-600 text-white px-4 py-2 font-semibold text-sm">
+                              Đánh giá
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    {order.items.map((item, idx) => (
-  <div
-    key={idx}
-    className="flex items-center gap-3 border-b pb-2 mb-2 last:border-none last:mb-0 last:pb-0"
-  >
-    <img
-      src={
-        item.imageUrl ||
-        "https://via.placeholder.com/70x70?text=No+Image"
-      }
-      alt={item.productName || "Sản phẩm"}
-      width={70}
-      height={70}
-      className="object-cover border"
-    />
-    <div className="flex flex-1 justify-between items-center">
-      {/* Phần thông tin sản phẩm bên trái */}
-      <div className="flex flex-col text-gray-700">
-        <p className="font-semibold">{item.productName}</p>
-        <p className="text-sm">
-          Giá: {item.priceAtPurchase.toLocaleString("vi-VN")}đ
-        </p>
-        <p className="text-sm">Số lượng: {item.quantity}</p>
-      </div>
-      {/* Phần thông tin size & color nằm chung hàng bên phải */}
-      <div className="flex items-center gap-4 text-sm text-gray-700">
-        <span>Size: {item.size}</span>
-        <div className="flex items-center gap-1">
-          <span>Color:</span>
-          <span
-            className="w-4 h-4 border border-gray-300 inline-block"
-            style={{ backgroundColor: item.color }}
-          ></span>
-        </div>
-      </div>
-    </div>
-  </div>
-))}
-
-                    <div className="flex items-center justify-between">
-                      <p className="text-gray-600">
-                        Tạm tính:{" "}
-                        <span className="font-semibold text-gray-800">
-                          {order.subTotal.toLocaleString("vi-VN")}đ
-                        </span>
-                      </p>
-                      <div className="flex gap-2">
-                        {order.status === "Pending Confirmed" && (
-                          <button className="bg-red-600 text-white px-4 py-2 font-semibold text-sm">
-                            Hủy Đơn
-                          </button>
-                        )}
-                        {order.status === "Completed" && (
-                          <button className="bg-blue-600 text-white px-4 py-2 font-semibold text-sm">
-                            Đánh giá
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                  </Link>
+                ))}
+                {/* Nếu có hơn 5 đơn hàng và đang ở chế độ rút gọn, hiển thị nút "Xem thêm" */}
+                {filteredOrders.length > 5 && !showAll && (
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => setShowAll(true)}
+                      className="bg-gray-600 text-white px-6 py-2 font-semibold text-sm rounded"
+                    >
+                      Xem thêm
+                    </button>
                   </div>
-                </Link>
-              ))
+                )}
+              </>
             )}
           </div>
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { notFound, useRouter, useParams } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import toast from "react-hot-toast";
 import orderService from "@/services/order.service";
 import { OrderDetailData } from "@/types";
@@ -75,14 +75,8 @@ export default function OrderDetailPage() {
     );
   }
 
-  // Tính tổng
+  // Tính tổng thanh toán
   const totalPayment = order.orderTotal + order.shippingCost;
-
-  // Giả sử BE có field orderStatus, orderDate, v.v. 
-  // Hoặc bạn "show cứng" (placeholder) nếu chưa có
-  const orderDate = "24/02/2025";         // placeholder
-  const orderTime = "11:11";             // placeholder
-  const orderStatus = "Đang chờ xác nhận";          // placeholder
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-100">
@@ -95,28 +89,28 @@ export default function OrderDetailPage() {
           {/* Cột phải: nội dung chi tiết đơn hàng */}
           <div className="flex-1 space-y-4">
             
-           {/* Phần đầu: Thông tin cơ bản đơn hàng */}
-        <div className="bg-white p-4 shadow">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold">
-              Đơn hàng{" "}
-              {new Date(order.createdDate).toLocaleDateString("vi-VN", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-              })}{" "}
-              {new Date(order.createdDate).toLocaleTimeString("vi-VN", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}{" "}
-              #{order.orderId}
-            </h2>
-            <span className="text-green-500 text-sm">{order.status}</span>
-          </div>
-          <p className="text-sm text-gray-500">
-            Rất mong được phục vụ bạn trong lần tới.
-          </p>
-        </div>
+            {/* Thông tin cơ bản đơn hàng */}
+            <div className="bg-white p-4 shadow">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-lg font-semibold">
+                  Đơn hàng{" "}
+                  {new Date(order.createdDate).toLocaleDateString("vi-VN", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  })}{" "}
+                  {new Date(order.createdDate).toLocaleTimeString("vi-VN", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}{" "}
+                  #{order.orderId}
+                </h2>
+                <span className="text-green-500 text-sm">{order.status}</span>
+              </div>
+              <p className="text-sm text-gray-500">
+                Rất mong được phục vụ bạn trong lần tới.
+              </p>
+            </div>
 
             {/* Thông tin người nhận + địa chỉ */}
             <div className="bg-white p-4 shadow">
@@ -136,8 +130,7 @@ export default function OrderDetailPage() {
                 </p>
                 <p>
                   <span className="font-medium">Địa chỉ:</span>{" "}
-                  {order.address}, {order.district}, {order.city},{" "}
-                  {order.province}, {order.country}
+                  {order.address}, {order.district}, {order.city}, {order.province}, {order.country}
                 </p>
                 <p>
                   <span className="font-medium">Phương thức thanh toán:</span>{" "}
@@ -183,7 +176,7 @@ export default function OrderDetailPage() {
               })}
             </div>
 
-            {/* Tổng giá + phí ship + nút đánh giá / đổi trả */}
+            {/* Tổng giá + phí ship + nút hành động */}
             <div className="bg-white p-4 shadow space-y-4">
               <div>
                 <h3 className="text-md font-semibold mb-3">Tổng thanh toán</h3>
@@ -202,30 +195,44 @@ export default function OrderDetailPage() {
                   </div>
                 </div>
               </div>
-              {/* Các nút */}
-              <div className="flex gap-3">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const accId = getCookie("accountId")?.toString() || "";
-                    router.push(
-                      `/profile/order/feedback?orderId=${order.orderId}&accountId=${accId}`
-                    );
-                  }}
-                  className="bg-blue-600 text-white px-4 py-2 text-sm font-semibold rounded"
-                >
-                  Đánh giá
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    router.push(`/profile/return-item/request?orderId=${order.orderId}`);
-                  }}
-                  className="bg-red-600 text-white px-4 py-2 text-sm font-semibold rounded"
-                >
-                  Đổi/Trả hàng
-                </button>
-              </div>
+
+              {order.status.toLowerCase() === "completed" ? (
+                <div className="flex gap-3">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const accId = getCookie("accountId")?.toString() || "";
+                      router.push(
+                        `/profile/order/feedback?orderId=${order.orderId}&accountId=${accId}`
+                      );
+                    }}
+                    className="bg-blue-600 text-white px-4 py-2 text-sm font-semibold rounded"
+                  >
+                    Đánh giá
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/profile/return-item/request?orderId=${order.orderId}`);
+                    }}
+                    className="bg-red-600 text-white px-4 py-2 text-sm font-semibold rounded"
+                  >
+                    Đổi/Trả hàng
+                  </button>
+                </div>
+              ) : order.status === "Pending Confirmed" ? (
+                <div className="flex gap-3">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push("/product");
+                    }}
+                    className="bg-green-600 text-white px-4 py-2 text-sm font-semibold rounded"
+                  >
+                    Tiếp tục mua sắm
+                  </button>
+                </div>
+              ) : null}
             </div>
 
           </div>
