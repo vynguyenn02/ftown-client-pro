@@ -18,6 +18,7 @@ export type FeedbackListResponse = {
 export type Product = {
   productId: number;
   name: string;
+  productName: string; // Tên sản phẩm
   imagePath: string;
   price: number;
   discountedPrice: number;

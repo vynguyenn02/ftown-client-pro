@@ -10,7 +10,7 @@ export const END_POINT = {
   DELETE_FAVORITE_PRODUCT: "/favorites/{accountId}/{productId}",
   GET_ALL_FAVORITE_PRODUCT: "/favorites/{accountId}",
   GET_ALL_PRODUCT_BY_CATEGORY: "/products/filter-by-category",
-
+  GET_BEST_SELLER_PRODUCT: "/products/top-selling-products",
 };
 
 class ProductService {
@@ -55,6 +55,13 @@ class ProductService {
       categoryName
     )}&page=${page}&pageSize=${pageSize}`;
 
+    return get(url);
+  }
+  getBestSellerProducts(top: number): Promise<AxiosResponse<ProductListResponse>> {
+    const to = new Date();
+    const from = new Date();
+    from.setMonth(from.getMonth() - 1);
+    const url = `${END_POINT.GET_BEST_SELLER_PRODUCT}?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}&top=${top}`;
     return get(url);
   }
 }
