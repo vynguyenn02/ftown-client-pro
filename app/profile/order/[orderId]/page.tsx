@@ -220,7 +220,7 @@ export default function OrderDetailPage() {
                     Đổi/Trả hàng
                   </button>
                 </div>
-              ) : order.status === "Pending Confirmed" ? (
+              ) : order.status === "Pending Confirmed" || order.status ==="Delivered" || order.status ==="Confirmed" || order.status ==="Shipping" ? (
                 <div className="flex gap-3">
                   <button
                     onClick={(e) => {

@@ -16,7 +16,7 @@ const getStatusColorClass = (status: string) => {
   switch (status) {
     case "Cancel":
       return "bg-red-100 text-red-500";
-    case "Shipped":
+    case "Delivered":
       return "bg-green-100 text-green-500";
     case "Shipping":
       return "bg-blue-100 text-blue-500";
@@ -36,7 +36,7 @@ const tabs = [
   { label: "Chờ xác nhận", value: "Pending Confirmed" },
   { label: "Đã xác nhận", value: "Confirmed" },
   { label: "Đang giao hàng", value: "Shipping" },
-  { label: "Giao hàng", value: "Shipped" },
+  { label: "Đã giao hàng", value: "Delivered" },
   { label: "Hoàn thành", value: "Completed" },
   { label: "Đã hủy", value: "Cancel" },
 ];
@@ -49,6 +49,24 @@ export default function OrderPage() {
   const [searchValue, setSearchValue] = useState("");
   const [showAll, setShowAll] = useState(false);
 
+  // Hàm xử lý gọi API xác nhận đã nhận được hàng (Delivered)  
+  // Lưu ý: API này hiện chưa được viết, bạn có thể thay đổi gọi API thực tế khi có sẵn endpoint
+  const handleConfirmReceived = (orderId: number) => {
+    orderService
+      .confirmReceive(orderId) // API này cần được cài đặt sau trong orderService
+      .then((res) => {
+        if (res.data.status) {
+          toast.success("Đơn hàng đã được xác nhận thành công!");
+          fetchOrders(); // làm mới lại danh sách đơn hàng
+        } else {
+          toast.error(res.data.message);
+        }
+      })
+      .catch(() => {
+        toast.error("Có lỗi xảy ra khi xác nhận đơn hàng!");
+      });
+  };
+  
   // Fetch đơn hàng dựa trên activeTab
   const fetchOrders = () => {
     const accountId = Number(getCookie("accountId"));
@@ -223,6 +241,17 @@ export default function OrderPage() {
                           {order.status === "Pending Confirmed" && (
                             <button className="bg-red-600 text-white px-4 py-2 font-semibold text-sm">
                               Hủy Đơn
+                            </button>
+                          )}
+                          {order.status === "Delivered" && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation(); // Ngăn sự kiện chuyển trang khi click button
+                                handleConfirmReceived(order.orderId);
+                              }}
+                              className="bg-green-600 text-white px-4 py-2 font-semibold text-sm"
+                            >
+                              Đã nhận được hàng
                             </button>
                           )}
                           {order.status === "Completed" && (

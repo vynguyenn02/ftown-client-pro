@@ -1,5 +1,5 @@
 import { AxiosResponse } from "axios";
-import { post, get, postMultipart } from "@/utils/axios";
+import { post, get, postMultipart, put } from "@/utils/axios";
 import {
   CreateOrderRequest,
   CreateOrderResponse,
@@ -20,6 +20,7 @@ export const ORDER_ENDPOINT = {
   GET_ORDER_DETAIL: "/orders/{orderId}/details", 
   POST_RETURN_REQUEST_CHECKOUT: "/return-requests/checkout",
   SUBMIT_RETURN_REQUEST: "/return-requests/submit-return-request",
+  CONFIRM_RECEIVE: "/orders/{orderId}/status",
 };
 
 class OrderService {
@@ -106,6 +107,12 @@ class OrderService {
     
       return postMultipart(ORDER_ENDPOINT.SUBMIT_RETURN_REQUEST, formData);
     }
+    confirmReceive(orderId: number): Promise<AxiosResponse<any>> {
+      const url = ORDER_ENDPOINT.CONFIRM_RECEIVE.replace("{orderId}", String(orderId));
+      // Gửi PUT và payload { newStatus: "completed" }
+      return put(url, { newStatus: "completed" });
+    }
+    
     
   }
 

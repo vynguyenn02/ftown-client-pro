@@ -152,8 +152,6 @@ export default function CheckOutPage() {
           {/* Cột trái: Thông tin thanh toán / giao hàng */}
           <div className="w-full md:w-2/3 p-4 md:p-6 border border-gray-200 shadow-sm space-y-4">
             <h1 className="text-2xl font-bold">funkytown</h1>
-            <p className="text-gray-500 text-sm">Đăng nhập / Mua như khách</p>
-
             <h3 className="text-xl font-semibold mt-4">Thông tin thanh toán</h3>
 
             {/* Dropdown chọn địa chỉ đã lưu */}
