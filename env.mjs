@@ -9,7 +9,7 @@ export const env = createEnv({
       .transform((value) => value === "true"),
   },
   client: {
-    NEXT_PUBLIC_API_URL: z.string().url().default(" https://localhost:443"),
+    NEXT_PUBLIC_API_URL: z.string().url().default("https://ftapigateway.azurewebsites.net"),
     NEXT_PUBLIC_API_KEY: z.string().default("https://api.example.com"),
     NEXT_PUBLIC_AUTH_DOMAIN: z.string().default("https://api.example.com"),
     NEXT_PUBLIC_PROJECT_ID: z.string().default("https://api.example.com"),
@@ -19,7 +19,7 @@ export const env = createEnv({
   },
   runtimeEnv: {
     ANALYZE: process.env.ANALYZE,
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || " https://localhost:443",
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || "https://ftapigateway.azurewebsites.net",
     NEXT_PUBLIC_API_KEY: process.env.NEXT_PUBLIC_API_KEY || "https://api.example.com",
     NEXT_PUBLIC_AUTH_DOMAIN: process.env.NEXT_PUBLIC_AUTH_DOMAIN || "https://api.example.com",
     NEXT_PUBLIC_PROJECT_ID: process.env.NEXT_PUBLIC_PROJECT_ID || "https://api.example.com",
