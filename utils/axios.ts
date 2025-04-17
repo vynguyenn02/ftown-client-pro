@@ -115,3 +115,20 @@ export const postMultipart = (
     data: formData,
   });
 };
+
+export const putMultipart = (
+  endpoint: string,
+  formData: FormData
+): Promise<AxiosResponse> => {
+  const accessToken = getCookie(config.cookies.accessToken);
+
+  return axios({
+    url: env.NEXT_PUBLIC_API_URL + endpoint,
+    method: "PUT",
+    headers: {
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      "Content-Type": "multipart/form-data",
+    },
+    data: formData,
+  });
+};

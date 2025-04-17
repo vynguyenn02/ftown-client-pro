@@ -151,7 +151,7 @@ export default function ProductPage() {
                     {product.colors.map((color) => (
                       <span
                         key={color}
-                        className="inline-block w-4 h-4 border border-gray-300"
+                        className="inline-block w-4 h-4 border border-gray-300 rounded-full"
                         style={{ backgroundColor: color }}
                       />
                     ))}

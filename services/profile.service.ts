@@ -9,7 +9,7 @@ import {
   UpdateShippingAddressRequest,
   UpdateShippingAddressResponse
 } from "@/types";
-import { get, put, post, remove } from "../utils/axios";
+import { get, put, post, remove, putMultipart } from "../utils/axios";
 
 export const END_POINT = {
   GET_CUSTOMER_PROFILE: "/customer/profile/{accountId}",
@@ -35,10 +35,13 @@ class ProfileService {
   // API edit profile
   editCustomerProfile(
     accountId: number,
-    data: EditProfileRequest
+    formData: FormData
   ): Promise<AxiosResponse<EditProfileResponse>> {
-    const url = END_POINT.EDIT_CUSTOMER_PROFILE.replace("{accountId}", String(accountId));
-    return put(url, data);
+    const url = END_POINT.EDIT_CUSTOMER_PROFILE.replace(
+      "{accountId}",
+      String(accountId)
+    );
+    return putMultipart(url, formData);
   }
   getShippingAddress(accountId: number): Promise<AxiosResponse<GetShippingAddress>> {
     const url = END_POINT.GET_SHIPPING_ADDRESS.replace("{accountId}", String(accountId));

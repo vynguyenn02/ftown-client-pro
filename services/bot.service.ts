@@ -1,28 +1,29 @@
-// /services/bot.service.ts
 "use client";
 
 import { getCookie } from "cookies-next";
 import * as signalR from "@microsoft/signalr";
 
-// Đổi URL: BotHub được map tại "/bothub" trên server
+// URL của hub chat
 const CHAT_HUB_URL = "https://localhost:7009/bothub";
 
 class BotService {
   private hubConnection: signalR.HubConnection | null = null;
+  private isStarting: boolean = false;
 
   constructor() {
     this.createConnection();
   }
 
+  /**
+   * Tạo mới hoặc tái tạo đối tượng HubConnection
+   */
   private createConnection() {
     this.hubConnection = new signalR.HubConnectionBuilder()
       .withUrl(CHAT_HUB_URL, {
         skipNegotiation: true,
         transport: signalR.HttpTransportType.WebSockets,
         accessTokenFactory: () => {
-          // Lấy token từ cookie nếu cần
           const token = getCookie("token");
-          console.log("BotService: accessTokenFactory: token =", token);
           return typeof token === "string" ? token : "";
         },
       })
@@ -31,77 +32,91 @@ class BotService {
       .build();
   }
 
-  // Khởi động kết nối
+  /**
+   * Bắt đầu kết nối nếu đang ở trạng thái Disconnected
+   */
   public async startConnection(): Promise<void> {
     if (!this.hubConnection) {
       this.createConnection();
     }
-    // Nếu kết nối không ở trạng thái Disconnected thì dừng trước khi start lại
-    if (this.hubConnection!.state !== signalR.HubConnectionState.Disconnected) {
-      await this.stopConnection();
-    }
-    try {
-      await this.hubConnection!.start();
-      console.log("✅ BotService: SignalR connection established:", this.hubConnection!.state);
-    } catch (err) {
-      console.error("❌ BotService: Error starting connection:", err);
-      // Thử kết nối lại sau 5 giây nếu gặp lỗi
-      setTimeout(() => this.startConnection(), 5000);
-    }
-  }
+    const conn = this.hubConnection!;
+    const state = conn.state;
 
-  // Dừng kết nối
-  public async stopConnection(): Promise<void> {
-    if (!this.hubConnection) return;
-    if (this.hubConnection.state !== signalR.HubConnectionState.Connected) {
-      console.log("ℹ️ BotService: Hub is not connected. Skip stop. State:", this.hubConnection.state);
+    if (state === signalR.HubConnectionState.Connected) {
+      console.log("BotService: Đã kết nối, bỏ qua start");
       return;
     }
-    try {
-      await this.hubConnection.stop();
-      console.log("🔌 BotService: Disconnected. State:", this.hubConnection.state);
-    } catch (err) {
-      console.error("❌ BotService: Error disconnecting:", err);
+    if (state === signalR.HubConnectionState.Connecting || this.isStarting) {
+      console.log("BotService: Đang kết nối, bỏ qua start");
+      return;
     }
-  }
+    if (state === signalR.HubConnectionState.Disconnecting) {
+      console.log(" BotService: Đang ngắt kết nối, chờ stop xong...");
+      try { await conn.stop(); } catch {}
+    }
 
-  // Reset kết nối: dừng, tạo mới và khởi động lại
-  public async resetConnection(): Promise<void> {
-    await this.stopConnection();
-    this.createConnection();
-    await this.startConnection();
+    this.isStarting = true;
+    try {
+      console.log("BotService: Bắt đầu kết nối...");
+      await conn.start();
+      console.log("BotService: Kết nối thành công. Trạng thái:", conn.state);
+    } catch (err: any) {
+      const msg = err?.message ?? err;
+      console.error("BotService: Lỗi khi kết nối:", msg);
+      if (msg.includes("Handshake was canceled")) {
+        console.warn("Handshake bị hủy, thử lại sau 2s");
+        setTimeout(() => this.startConnection(), 2000);
+      } else {
+        setTimeout(() => this.startConnection(), 5000);
+      }
+    } finally {
+      this.isStarting = false;
+    }
   }
 
   /**
-   * Đăng ký sự kiện nhận tin nhắn từ server.
-   * Server gửi sự kiện "ReceiveMessage" với 2 tham số: sender và message.
+   * Ngắt kết nối nếu đang Connected
    */
-  public onMessageReceived(callback: (sender: string, content: string) => void): void {
+  public async stopConnection(): Promise<void> {
     if (!this.hubConnection) return;
-    // Hủy đăng ký sự kiện cũ để tránh trùng lặp
+    const conn = this.hubConnection;
+    if (conn.state !== signalR.HubConnectionState.Connected) {
+      console.log("BotService: Chưa kết nối, bỏ qua stop. Trạng thái:", conn.state);
+      return;
+    }
+    try {
+      console.log("🔌 BotService: Ngắt kết nối...");
+      await conn.stop();
+      console.log("BotService: Ngắt xong. Trạng thái:", conn.state);
+    } catch (err) {
+      console.error("BotService: Lỗi khi ngắt:", err);
+    }
+  }
+
+  /**
+   * Đăng ký handler cho sự kiện ReceiveMessage
+   */
+  public onMessageReceived(callback: (sender: string, message: string) => void) {
+    if (!this.hubConnection) return;
+    // Bỏ handler cũ rồi đăng ký lại để tránh nhân đôi
     this.hubConnection.off("ReceiveMessage");
     this.hubConnection.on("ReceiveMessage", (sender: string, message: string) => {
-      console.log("📥 BotService: Received message from", sender, ":", message);
       callback(sender, message);
     });
   }
 
   /**
-   * Gửi tin nhắn của user lên server qua SignalR.
-   * Gọi method "SendMessage" của BotHub:
-   *     public async Task SendMessage(int userId, string message)
+   * Gửi tin nhắn đến server chỉ khi đã kết nối
    */
   public async sendMessageToBot(userId: number, content: string): Promise<void> {
     if (!this.hubConnection || this.hubConnection.state !== signalR.HubConnectionState.Connected) {
-      console.warn("⚠️ BotService: Hub is not connected. Cannot send message. State:", this.hubConnection?.state);
+      console.warn("BotService: Chưa kết nối, không thể gửi. Trạng thái:", this.hubConnection?.state);
       return;
     }
     try {
-      console.log(`BotService: Sending message to bot. userId=${userId}, content=${content}`);
       await this.hubConnection.invoke("SendMessage", userId, content);
-      console.log("✅ BotService: Message sent successfully.");
     } catch (err) {
-      console.error("❌ BotService: Error sending message:", err);
+      console.error("BotService: Lỗi khi gửi tin nhắn:", err);
     }
   }
 }

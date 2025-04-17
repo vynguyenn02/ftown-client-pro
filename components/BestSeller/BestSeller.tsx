@@ -136,7 +136,7 @@ export default function BestSeller() {
                     {product.colors.map((color, index) => (
                       <span
                         key={index}
-                        className="inline-block w-4 h-4 border border-gray-300"
+                        className="inline-block w-4 h-4 border border-gray-300 rounded-full"
                         style={{ backgroundColor: color }}
                       />
                     ))}

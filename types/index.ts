@@ -127,6 +127,8 @@ export type CartItem = {
   discountedPrice: number;
   // Thêm field này để hỗ trợ UI checkbox (nếu chưa có)
   isSelected?: boolean;
+  isValid?: boolean; // Để xác định sản phẩm có hợp lệ hay không
+  message?: string; // Thông báo lỗi nếu sản phẩm không hợp lệ
 };
 
 // Định nghĩa response khi gọi API getCart

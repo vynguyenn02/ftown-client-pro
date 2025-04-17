@@ -273,12 +273,7 @@ export default function Header() {
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/aichat"
-                  className="relative font-medium text-black hover:underline"
-                >
-                  AI Chat
-                </Link>
+                
               </li>
             </ul>
           </nav>
