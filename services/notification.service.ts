@@ -38,24 +38,41 @@ class NotificationService {
     if (!this.hubConnection) {
       this.createConnection();
     }
-    if (this.hubConnection!.state !== signalR.HubConnectionState.Disconnected) {
-      console.warn(
-        "⚠️ SignalR is not in Disconnected state. Current:",
-        this.hubConnection!.state,
-        "Stopping connection first..."
-      );
-      await this.stopConnection();
+  
+    const state = this.hubConnection!.state;
+    // 1️⃣ Nếu đang kết nối hoặc đã connected, skip
+    if (state === signalR.HubConnectionState.Connected) {
+      console.log("⚡️ SignalR already connected, skip start");
+      return;
     }
-
+    if (state === signalR.HubConnectionState.Connecting) {
+      console.log("⏳ SignalR is already connecting, skip start");
+      return;
+    }
+    // 2️⃣ Nếu đang disconnecting, chờ hoàn tất
+    if (state === signalR.HubConnectionState.Disconnecting) {
+      console.log("🛑 Waiting for previous stop to finish before starting...");
+      await this.hubConnection!.stop();
+    }
+  
     try {
-      console.log("NotificationService: Starting connection...");
+      console.log("🚀 Starting SignalR connection...");
       await this.hubConnection!.start();
-      console.log("✅ SignalR connection established. State:", this.hubConnection!.state);
-    } catch (err) {
-      console.error("❌ Error starting SignalR connection:", err);
-      setTimeout(() => this.startConnection(), 5000);
+      console.log("✅ SignalR connected. State:", this.hubConnection!.state);
+    } catch (err: any) {
+      const msg = err?.message || err;
+      // 3️⃣ Bắt lỗi handshake canceled và retry
+      if (msg.includes("Handshake was canceled")) {
+        console.warn("⚠️ Handshake was canceled, retrying in 2s...");
+        setTimeout(() => this.startConnection(), 2000);
+      } else {
+        console.error("❌ Error starting SignalR:", err);
+        // retry chung cho mọi lỗi khác
+        setTimeout(() => this.startConnection(), 5000);
+      }
     }
   }
+  
 
   // Dừng connection nếu đang kết nối
   public async stopConnection(): Promise<void> {

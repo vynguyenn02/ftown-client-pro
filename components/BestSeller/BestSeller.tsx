@@ -59,13 +59,9 @@ export default function BestSeller() {
       <div className="flex items-center justify-between border-b pb-2">
         <div className="flex space-x-6 text-xl font-semibold">
           <span className="border-b-2 border-black pb-1">BEST SELLER</span>
-          <span className="cursor-pointer text-gray-400 hover:text-black">
-            NEW ARRIVAL
-          </span>
+          
         </div>
-        <button className="rounded-md bg-black px-4 py-2 text-sm text-white">
-          Xem tất cả
-        </button>
+       
       </div>
 
       {/* Product List */}

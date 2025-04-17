@@ -76,8 +76,15 @@
 // };
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 import { getCookie } from "cookies-next";
+import { usePathname } from "next/navigation";
 import notificationService from "@/services/notification.service";
 import { NotificationResponse } from "@/types";
 
@@ -90,18 +97,68 @@ export interface NotificationItem {
 interface NotificationContextProps {
   persistentNotifications: NotificationItem[];
   transientNotifications: NotificationItem[];
-  setTransientNotifications: React.Dispatch<React.SetStateAction<NotificationItem[]>>;
+  setTransientNotifications: React.Dispatch<
+    React.SetStateAction<NotificationItem[]>
+  >;
   notificationCount: number;
 }
 
-const NotificationContext = createContext<NotificationContextProps | undefined>(undefined);
+const NotificationContext = createContext<
+  NotificationContextProps | undefined
+>(undefined);
 
-export const NotificationProvider = ({ children }: { children: ReactNode }) => {
-  const [persistentNotifications, setPersistentNotifications] = useState<NotificationItem[]>([]);
-  const [transientNotifications, setTransientNotifications] = useState<NotificationItem[]>([]);
+export const NotificationProvider = ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
+  // ——————————————————————————————————————————————
+  // 1) State lưu cookie-accountId & token, khởi tạo khi mount
+  // ——————————————————————————————————————————————
+  const [accountId, setAccountId] = useState<string | null>(() =>
+    typeof window !== "undefined"
+      ? (getCookie("accountId") as string) || null
+      : null
+  );
+  const [token, setToken] = useState<string>(() =>
+    typeof window !== "undefined" ? (getCookie("token") as string) || "" : ""
+  );
 
-  // Fetch danh sách thông báo từ API (persistent)
+  // State để lưu notifications
+  const [persistentNotifications, setPersistentNotifications] = useState<
+    NotificationItem[]
+  >([]);
+  const [transientNotifications, setTransientNotifications] = useState<
+    NotificationItem[]
+  >([]);
+
+  // Dùng usePathname để phát hiện khi router thay đổi URL (sau login/logout)
+  const pathname = usePathname();
+
+  // ——————————————————————————————————————————————
+  // 2) Theo dõi cookie thay đổi => cập nhật lại accountId & token
+  // ——————————————————————————————————————————————
   useEffect(() => {
+    const newAcc = (getCookie("accountId") as string) || null;
+    const newTok = (getCookie("token") as string) || "";
+    if (newAcc !== accountId) {
+      setAccountId(newAcc);
+    }
+    if (newTok !== token) {
+      setToken(newTok);
+    }
+  }, [pathname]);
+
+  // ——————————————————————————————————————————————
+  // 3) Khi thay đổi accountId => XÓA cũ, FETCH mới
+  // ——————————————————————————————————————————————
+  useEffect(() => {
+    // clear cũ
+    setPersistentNotifications([]);
+    setTransientNotifications([]);
+
+    if (!accountId) return;
+
     notificationService
       .fetchNotificationsByAccountId()
       .then((res: NotificationResponse) => {
@@ -113,29 +170,43 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
           }));
           setPersistentNotifications(mapped);
         } else {
-          console.error("Failed to fetch notifications:", res.message);
+          console.error("Fetch notifications failed:", res.message);
         }
       })
       .catch((err) => {
         console.error("Error fetching notifications:", err);
       });
-  }, []);
+  }, [accountId]);
 
-  // Khởi tạo SignalR và đăng ký realtime notifications
+  // ——————————————————————————————————————————————
+  // 4) Khi thay đổi token hoặc accountId => RESET SignalR connection
+  // ——————————————————————————————————————————————
   useEffect(() => {
-    notificationService.startConnection();
-    notificationService.onNotificationReceived((title, message) => {
-      const newNoti: NotificationItem = {
-        title,
-        message,
-        receivedAt: new Date(),
-      };
-      // Cập nhật persistent (không tự xoá)
-      setPersistentNotifications((prev) => [newNoti, ...prev]);
-      // Đồng thời cập nhật transient (dùng cho toast)
-      setTransientNotifications((prev) => [newNoti, ...prev]);
-    });
-  }, []);
+    if (!token || !accountId) return;
+
+    notificationService
+      .resetConnection()
+      .then(() => {
+        // luôn unregister rồi register handler
+        notificationService.onNotificationReceived((title, message) => {
+          const newNoti: NotificationItem = {
+            title,
+            message,
+            receivedAt: new Date(),
+          };
+          setPersistentNotifications((prev) => [newNoti, ...prev]);
+          setTransientNotifications((prev) => [newNoti, ...prev]);
+        });
+      })
+      .catch((err) => {
+        console.error("Error resetting SignalR connection:", err);
+      });
+
+    // cleanup khi unmount hoặc token/accountId thay đổi tiếp
+    return () => {
+      notificationService.stopConnection().catch(console.error);
+    };
+  }, [token, accountId]);
 
   return (
     <NotificationContext.Provider
@@ -151,10 +222,12 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export const useNotification = () => {
-  const context = useContext(NotificationContext);
-  if (context === undefined) {
-    throw new Error("useNotification must be used within a NotificationProvider");
+export const useNotification = (): NotificationContextProps => {
+  const ctx = useContext(NotificationContext);
+  if (!ctx) {
+    throw new Error(
+      "useNotification must be used within a NotificationProvider"
+    );
   }
-  return context;
+  return ctx;
 };

@@ -1,83 +1,76 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 import { getCookie } from "cookies-next";
 import botService from "@/services/bot.service";
 
-/** Kiểu tin nhắn trong ChatBot */
 export interface ChatMessage {
-  sender: "user" | "bot";
+  sender: "user" | "assistant";
   content: string;
   timestamp: Date;
 }
 
-/** Kiểu giá trị mà Context cung cấp */
 interface ChatBotContextProps {
   messages: ChatMessage[];
+  isTyping: boolean;
   sendMessage: (content: string) => void;
 }
 
-/** Khởi tạo context */
 const ChatBotContext = createContext<ChatBotContextProps | undefined>(undefined);
 
 export const ChatBotProvider = ({ children }: { children: ReactNode }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
 
-  // Khởi tạo SignalR connection một lần
   useEffect(() => {
-    // Start connection
     botService.startConnection().then(() => {
-      // Đăng ký lắng nghe event "ReceiveBotMessage"
-      botService.onMessageReceived((botReply) => {
-        // Mỗi khi server gửi tin nhắn (botReply), ta cập nhật vào state
-        const newMsg: ChatMessage = {
-          sender: "bot",
-          content: botReply,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, newMsg]);
+      botService.onMessageReceived((sender, message) => {
+        // Bỏ qua echo của user, chỉ hiển thị khi sender === "assistant"
+        if (sender !== "assistant") return;
+
+        setIsTyping(false);
+        setMessages((prev) => [
+          ...prev,
+          { sender: "assistant", content: message, timestamp: new Date() },
+        ]);
       });
     });
 
-    // Cleanup: khi unmount, dừng kết nối
     return () => {
       botService.stopConnection();
     };
   }, []);
 
-  /**
-   * Hàm gửi tin nhắn của user lên server
-   *  - Lưu tin nhắn user vào state
-   *  - Gọi botService để invoke method SignalR
-   */
   const sendMessage = (content: string) => {
-    // Lưu vào state local (thêm tin nhắn user)
-    const userMsg: ChatMessage = {
-      sender: "user",
-      content,
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, userMsg]);
+    // Thêm ngay tin nhắn user
+    setMessages((prev) => [
+      ...prev,
+      { sender: "user", content, timestamp: new Date() },
+    ]);
+    // Hiển thị typing indicator
+    setIsTyping(true);
 
-    // Lấy userId (accountId) nếu cần
     const userId = Number(getCookie("accountId")) || 0;
-
-    // Gửi qua SignalR
     botService.sendMessageToBot(userId, content);
   };
 
   return (
-    <ChatBotContext.Provider value={{ messages, sendMessage }}>
+    <ChatBotContext.Provider value={{ messages, isTyping, sendMessage }}>
       {children}
     </ChatBotContext.Provider>
   );
 };
 
-/** Custom hook để sử dụng ChatBotContext */
 export const useChatBot = (): ChatBotContextProps => {
-  const context = useContext(ChatBotContext);
-  if (!context) {
-    throw new Error("useChatBot must be used within a ChatBotProvider");
+  const ctx = useContext(ChatBotContext);
+  if (!ctx) {
+    throw new Error("useChatBot must be used within ChatBotProvider");
   }
-  return context;
+  return ctx;
 };
