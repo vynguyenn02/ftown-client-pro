@@ -51,21 +51,48 @@ export default function OrderPage() {
 
   // Hàm xử lý gọi API xác nhận đã nhận được hàng (Delivered)  
   // Lưu ý: API này hiện chưa được viết, bạn có thể thay đổi gọi API thực tế khi có sẵn endpoint
+  // Hàm xử lý gọi API xác nhận đã nhận được hàng (Delivered)
   const handleConfirmReceived = (orderId: number) => {
+    // Lấy accountId từ cookie đã có sẵn (lưu ý chuyển kiểu về number nếu cần)
+    const accountId = Number(getCookie("accountId"));
+    if (!accountId) {
+      toast.error("Bạn chưa đăng nhập!");
+      router.push("/login");
+      return;
+    }
+  
+    // Tạo payload để gửi đến BE (comment mặc định "Xác nhận")
+    const payload = {
+      newStatus: "completed",
+      changedBy: accountId,
+      comment: "Xác nhận",
+    };
+  
+    // Log thông tin payload gửi request
+    console.log(`Sending PUT request to confirmReceive for orderId ${orderId} with payload:`, payload);
+  
     orderService
-      .confirmReceive(orderId) // API này cần được cài đặt sau trong orderService
+      .confirmReceive(orderId, accountId) // Truyền accountId làm changeBy (với comment mặc định "Xác nhận")
       .then((res) => {
+        // Log response từ BE
+        console.log("Response from confirmReceive:", res.data);
+  
+        // Sử dụng message trả về từ response của BE cho toast
         if (res.data.status) {
-          toast.success("Đơn hàng đã được xác nhận thành công!");
-          fetchOrders(); // làm mới lại danh sách đơn hàng
+          toast.success(res.data.message);
+         // fetchOrders(); // Làm mới lại danh sách đơn hàng
         } else {
           toast.error(res.data.message);
         }
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error("Error confirming order receive:", error);
         toast.error("Có lỗi xảy ra khi xác nhận đơn hàng!");
       });
   };
+  
+  
+
   
   // Fetch đơn hàng dựa trên activeTab
   const fetchOrders = () => {
@@ -243,17 +270,18 @@ export default function OrderPage() {
                               Hủy Đơn
                             </button>
                           )}
-                          {order.status === "Delivered" && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation(); // Ngăn sự kiện chuyển trang khi click button
-                                handleConfirmReceived(order.orderId);
-                              }}
-                              className="bg-green-600 text-white px-4 py-2 font-semibold text-sm"
-                            >
-                              Đã nhận được hàng
-                            </button>
-                          )}
+                         {order.status === "Delivered" && (
+                          <button
+                            onClick={(e) => {
+                              
+                              handleConfirmReceived(order.orderId);
+                            }}
+                            className="bg-green-600 text-white px-4 py-2 font-semibold text-sm"
+                          >
+                            Đã nhận được hàng
+                          </button>
+                        )}
+
                           {order.status === "Completed" && (
                             <button className="bg-blue-600 text-white px-4 py-2 font-semibold text-sm">
                               Đánh giá

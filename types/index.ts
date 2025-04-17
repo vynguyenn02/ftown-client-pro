@@ -551,3 +551,8 @@ export type NotificationResponse = {
   status: boolean;
   message: string;
 }
+
+export type ConfirmReceive = {
+  status: boolean;
+  message: string;
+}

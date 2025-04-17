@@ -1,9 +1,20 @@
 "use client";
-import { useState } from "react";
+import { useState, FormEvent } from "react";
+import { useChatBot } from "@/contexts/ChatBotContextProps";
 
 export default function Chatbot() {
-  // State kiểm soát chatbot đang mở (isOpen = true) hay đã thu nhỏ (isOpen = false)
   const [isOpen, setIsOpen] = useState(true);
+  const [inputValue, setInputValue] = useState("");
+  // Lấy messages + hàm sendMessage từ context
+  const { messages, sendMessage } = useChatBot();
+
+  // Xử lý gửi tin nhắn
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!inputValue.trim()) return;
+    sendMessage(inputValue.trim());
+    setInputValue("");
+  };
 
   return (
     <>
@@ -22,35 +33,60 @@ export default function Chatbot() {
           {/* Header chatbot */}
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Chatbot</h2>
-            {/* Nút thu nhỏ (dùng icon thay chữ) */}
             <button
               onClick={() => setIsOpen(false)}
               className="text-gray-600 hover:text-black text-2xl leading-none"
               title="Thu nhỏ"
             >
-              {/* Biểu tượng thu nhỏ, ví dụ ➖ */}
               ➖
             </button>
           </div>
 
           {/* Khu vực hiển thị tin nhắn */}
           <div className="flex-1 overflow-y-auto mb-4">
-            <p className="text-sm">Chào bạn! Mình có thể giúp gì cho bạn hôm nay?</p>
-            {/* ... nội dung chat ... */}
+            {messages.map((msg, idx) => (
+              <div
+                key={idx}
+                className={`mb-2 ${
+                  msg.sender === "user" ? "text-right" : "text-left"
+                }`}
+              >
+                <p
+                  className={`
+                    inline-block px-3 py-2 rounded-md
+                    ${
+                      msg.sender === "user"
+                        ? "bg-blue-500 text-white"
+                        : "bg-gray-200 text-black"
+                    }
+                  `}
+                >
+                  {msg.content}
+                </p>
+              </div>
+            ))}
           </div>
 
           {/* Ô nhập tin nhắn */}
-          <div>
+          <form onSubmit={handleSubmit} className="flex">
             <input
               type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
               placeholder="Nhập tin nhắn..."
               className="
-                w-full p-2 rounded
+                flex-1 p-2 rounded-l
                 bg-gray-100 border border-gray-300
                 text-black focus:outline-none focus:ring-2 focus:ring-gray-400
               "
             />
-          </div>
+            <button
+              type="submit"
+              className="bg-black text-white px-4 py-2 rounded-r"
+            >
+              Gửi
+            </button>
+          </form>
         </div>
       ) : (
         // Nếu isOpen = false => chỉ hiện 1 nút nhỏ
@@ -64,7 +100,6 @@ export default function Chatbot() {
           "
           title="Mở Chat"
         >
-          {/* Biểu tượng mở rộng, ví dụ 💬 */}
           💬
         </button>
       )}

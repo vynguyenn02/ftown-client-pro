@@ -10,6 +10,7 @@ import {
   CreateCheckoutRequest,
   SubmitReturnRequest,
   SubmitReturnResponse,
+  ConfirmReceive,
 } from "@/types";
 
 export const ORDER_ENDPOINT = {
@@ -107,11 +108,20 @@ class OrderService {
     
       return postMultipart(ORDER_ENDPOINT.SUBMIT_RETURN_REQUEST, formData);
     }
-    confirmReceive(orderId: number): Promise<AxiosResponse<any>> {
+    confirmReceive(
+      orderId: number,
+      changedBy: number,              // accountId truyền từ component
+      comment: string = "Xác nhận"   // comment mặc định
+    ): Promise<AxiosResponse<ConfirmReceive>> {
       const url = ORDER_ENDPOINT.CONFIRM_RECEIVE.replace("{orderId}", String(orderId));
-      // Gửi PUT và payload { newStatus: "completed" }
-      return put(url, { newStatus: "completed" });
+      // Gửi PUT và payload gồm newStatus, changeBy, và comment
+      return put(url, {
+        newStatus: "completed",
+        changedBy,
+        comment,
+      });
     }
+    
     
     
   }
