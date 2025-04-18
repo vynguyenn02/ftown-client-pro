@@ -558,3 +558,20 @@ export type ConfirmReceive = {
   status: boolean;
   message: string;
 }
+
+export type GoogleLoginResponse = {
+  token: string;
+  account: {
+    accountId: number;
+    fullName: string;
+    email?: string;
+    createdDate?: string | null;
+    lastLoginDate?: string | null;
+  };
+  // nếu BE có trả thêm message hay status, bạn cũng có thể thêm vào
+  status?: boolean;
+  message?: string;
+}
+export type GoogleLoginRequest = {
+  idToken: string;
+};
