@@ -24,7 +24,7 @@ export const ORDER_ENDPOINT = {
   POST_RETURN_REQUEST_CHECKOUT: "/return-requests/checkout",
   SUBMIT_RETURN_REQUEST: "/return-requests/submit-return-request",
   CONFIRM_RECEIVE: "/orders/{orderId}/status",
-  ORDER_STATUS_NEWEST: "/api/ghn/order-status-newest",
+  ORDER_STATUS_NEWEST: "/ghn/order-status-newest",
 };
 
 class OrderService {
