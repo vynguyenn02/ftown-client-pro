@@ -11,6 +11,8 @@ import {
   SubmitReturnRequest,
   SubmitReturnResponse,
   ConfirmReceive,
+  GHNRequest,
+  GHNResponse
 } from "@/types";
 
 export const ORDER_ENDPOINT = {
@@ -22,6 +24,7 @@ export const ORDER_ENDPOINT = {
   POST_RETURN_REQUEST_CHECKOUT: "/return-requests/checkout",
   SUBMIT_RETURN_REQUEST: "/return-requests/submit-return-request",
   CONFIRM_RECEIVE: "/orders/{orderId}/status",
+  ORDER_STATUS_NEWEST: "/api/ghn/order-status-newest",
 };
 
 class OrderService {
@@ -121,7 +124,12 @@ class OrderService {
         comment,
       });
     }
-    
+    orderStatusNewest(
+      ghnid: string
+    ): Promise<AxiosResponse<GHNResponse>> {
+      const payload: GHNRequest = { order_code: ghnid };
+      return post(ORDER_ENDPOINT.ORDER_STATUS_NEWEST, payload);
+    }
     
     
   }

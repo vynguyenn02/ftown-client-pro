@@ -1,5 +1,5 @@
 import { AxiosResponse } from "axios";
-import { post, get } from "@/utils/axios";
+import { postMultipart, get } from "@/utils/axios";
 import { CreateFeedbackRequest, CreateFeedbackResponse, FeedbackListResponse } from "@/types";
 
 export const FEEDBACK_ENDPOINT = {
@@ -9,12 +9,42 @@ export const FEEDBACK_ENDPOINT = {
 
 class FeedbackService {
   createFeedback(
-    payload: CreateFeedbackRequest[]
+    payload: CreateFeedbackRequest[] | FormData
   ): Promise<AxiosResponse<CreateFeedbackResponse>> {
-    // Bao gói mảng payload vào trong một đối tượng có key "feedbacks"
-    const data = { feedbacks: payload };
-    console.log("Payload to submit:", data);
-    return post(FEEDBACK_ENDPOINT.CREATE_FEEDBACK, data);
+    let formData: FormData;
+
+    if (payload instanceof FormData) {
+      formData = payload;
+    } else {
+      formData = new FormData();
+      payload.forEach((fb, idx) => {
+        if (fb.orderDetailId != null) {
+          formData.append(`feedbacks[${idx}].orderDetailId`, fb.orderDetailId.toString());
+        }
+        formData.append(`feedbacks[${idx}].accountId`, fb.accountId.toString());
+        formData.append(`feedbacks[${idx}].productId`, fb.productId.toString());
+
+        if (fb.Title) {
+          formData.append(`feedbacks[${idx}].Title`, fb.Title);
+        }
+        if (fb.rating != null) {
+          formData.append(`feedbacks[${idx}].rating`, fb.rating.toString());
+        }
+        if (fb.comment) {
+          formData.append(`feedbacks[${idx}].comment`, fb.comment);
+        }
+        if (fb.createdDate) {
+          formData.append(`feedbacks[${idx}].createdDate`, fb.createdDate);
+        }
+        if (fb.imageFile) {
+          formData.append(`feedbacks[${idx}].imageFile`, fb.imageFile);
+        }
+      });
+    }
+
+    // Debug
+    console.log("CreateFeedback FormData entries:", Array.from(formData.entries()));
+    return postMultipart(FEEDBACK_ENDPOINT.CREATE_FEEDBACK, formData);
   }
   getFeedbackByProductId(
     productId: number,

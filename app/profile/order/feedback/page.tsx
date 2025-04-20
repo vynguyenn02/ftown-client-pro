@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getCookie } from "cookies-next";
 import toast from "react-hot-toast";
@@ -11,9 +11,9 @@ import Sidebar from "@/components/Sidebar/Sidebar";
 
 import orderService from "@/services/order.service";
 import feedbackService from "@/services/feedback.service";
-import { GetReturnItemResponse, ReturnData, CreateFeedbackRequest } from "@/types";
+import { GetReturnItemResponse, ReturnData } from "@/types";
 
-// Kiểu dữ liệu cho feedback (dùng cho state FE)
+// Dữ liệu feedback trên FE
 type FeedbackData = {
   orderDetailId: number;
   productId: number;
@@ -34,7 +34,7 @@ export default function FeedbackPage() {
   const [loading, setLoading] = useState(true);
   const [feedbacks, setFeedbacks] = useState<FeedbackData[]>([]);
 
-  // Lấy danh sách sản phẩm cần feedback từ API getOrdersReturnRequest
+  // Lấy danh sách sản phẩm cần đánh giá
   useEffect(() => {
     const accId = getCookie("accountId");
     if (!accId) {
@@ -42,48 +42,44 @@ export default function FeedbackPage() {
       router.push("/login");
       return;
     }
-    const accountId = Number(accId);
     if (!orderId) {
       toast.error("Thiếu orderId trên URL!");
       router.push("/profile/order");
       return;
     }
 
-    const fetchData = async () => {
-      try {
-        const res = await orderService.getOrdersReturnRequest(accountId, orderId);
+    orderService
+      .getOrdersReturnRequest(Number(accId), orderId)
+      .then((res) => {
         if (res.data.status) {
           setItems(res.data.data);
         } else {
           toast.error(res.data.message);
         }
-      } catch (err) {
+      })
+      .catch((err) => {
         console.error("Error fetching items for feedback:", err);
         toast.error("Có lỗi khi lấy sản phẩm!");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+      })
+      .finally(() => setLoading(false));
   }, [orderId, router]);
 
-  // Khi items thay đổi, khởi tạo mảng feedbacks với các trường orderDetailId, productId, productVariantId, title...
+  // Khởi tạo feedbacks khi items thay đổi
   useEffect(() => {
-    if (items.length > 0) {
-      const initFeedbacks: FeedbackData[] = items.map((item) => ({
+    if (items.length) {
+      const init = items.map((item) => ({
         orderDetailId: item.orderDetailId,
         productId: item.productId,
         productVariantId: item.productVariantId,
-        Title: item.productName, // mặc định title là tên sản phẩm
+        Title: item.productName,
         rating: 0,
         comment: "",
         imageFile: null,
       }));
-      setFeedbacks(initFeedbacks);
+      setFeedbacks(init);
     }
   }, [items]);
 
-  // Xử lý thay đổi rating cho từng sản phẩm
   const handleRatingChange = (variantId: number, value: number) => {
     setFeedbacks((prev) =>
       prev.map((fb) =>
@@ -92,7 +88,6 @@ export default function FeedbackPage() {
     );
   };
 
-  // Xử lý thay đổi nhận xét
   const handleCommentChange = (variantId: number, value: string) => {
     setFeedbacks((prev) =>
       prev.map((fb) =>
@@ -101,7 +96,6 @@ export default function FeedbackPage() {
     );
   };
 
-  // Xử lý upload hình ảnh
   const handleImageChange = (
     variantId: number,
     e: React.ChangeEvent<HTMLInputElement>
@@ -114,51 +108,59 @@ export default function FeedbackPage() {
     );
   };
 
-  // Submit tất cả feedback cho đơn hàng (gửi 1 mảng CreateFeedbackRequest)
- // Submit tất cả feedback cho đơn hàng (gửi 1 mảng CreateFeedbackRequest)
-const handleSubmitAllFeedback = async () => {
-  const accId = getCookie("accountId");
-  if (!accId) {
-    toast.error("Bạn chưa đăng nhập!");
-    router.push("/login");
-    return;
-  }
-  const accountId = Number(accId);
-
-  // Map mảng feedbacks sang CreateFeedbackRequest (với createdDate gửi dưới dạng chuỗi ISO)
-  const feedbackRequests: CreateFeedbackRequest[] = feedbacks.map((fb) => ({
-    orderDetailId: fb.orderDetailId,
-    accountId: accountId,
-    productId: fb.productId,
-    Title: fb.Title,
-    rating: fb.rating,
-    comment: fb.comment,
-    createdDate: new Date().toISOString(),
-    imagePath: fb.imageFile ? fb.imageFile.name : "",
-  }));
-
-  console.log("Feedback Requests:", feedbackRequests);
-
-  try {
-    const res = await feedbackService.createFeedback(feedbackRequests);
-    console.log("Feedback submission response:", res);
-    if (res.data.status) {
-      toast.success(res.data.message || "Đánh giá đã được gửi thành công!");
-      router.push("/profile/order");
-    } else {
-      toast.error(res.data.message || "Gửi đánh giá thất bại!");
+  // Gửi feedback bằng multipart/form-data
+  const handleSubmitAllFeedback = async () => {
+    const accId = getCookie("accountId");
+    if (!accId) {
+      toast.error("Bạn chưa đăng nhập!");
+      router.push("/login");
+      return;
     }
-  } catch (error: any) {
-    console.error("Error submitting feedback:", error);
-    if (error.response) {
-      console.error("Response error data:", JSON.stringify(error.response.data, null, 2));
-      toast.error("Có lỗi xảy ra khi gửi đánh giá: " + JSON.stringify(error.response.data));
-    } else {
+
+    const formData = new FormData();
+    feedbacks.forEach((fb, idx) => {
+      formData.append(
+        `feedbacks[${idx}].orderDetailId`,
+        fb.orderDetailId.toString()
+      );
+      formData.append(`feedbacks[${idx}].accountId`, accId);
+      formData.append(
+        `feedbacks[${idx}].productId`,
+        fb.productId.toString()
+      );
+      formData.append(`feedbacks[${idx}].Title`, fb.Title);
+      formData.append(
+        `feedbacks[${idx}].rating`,
+        fb.rating.toString()
+      );
+      formData.append(`feedbacks[${idx}].comment`, fb.comment);
+      formData.append(
+        `feedbacks[${idx}].createdDate`,
+        new Date().toISOString()
+      );
+      if (fb.imageFile) {
+        formData.append(
+          `feedbacks[${idx}].imageFile`,
+          fb.imageFile
+        );
+      }
+    });
+
+    console.log("Submitting FormData:", Array.from(formData.entries()));
+    try {
+      const res = await feedbackService.createFeedback(formData);
+      console.log("Feedback submission response:", res);
+      if (res.data.status) {
+        toast.success(res.data.message);
+        router.push("/profile/order");
+      } else {
+        toast.error(res.data.message);
+      }
+    } catch (error: any) {
+      console.error("Error submitting feedback:", error);
       toast.error("Có lỗi xảy ra khi gửi đánh giá!");
     }
-  }
-};
-
+  };
 
   if (loading) {
     return (
@@ -181,7 +183,9 @@ const handleSubmitAllFeedback = async () => {
           <div className="flex-1">
             <h1 className="text-2xl font-bold mb-6">Đánh giá sản phẩm</h1>
             {items.length === 0 ? (
-              <p className="text-gray-500">Không có sản phẩm nào để đánh giá.</p>
+              <p className="text-gray-500">
+                Không có sản phẩm nào để đánh giá.
+              </p>
             ) : (
               <div className="space-y-6">
                 {feedbacks.map((fb) => {
@@ -194,7 +198,6 @@ const handleSubmitAllFeedback = async () => {
                       key={fb.productVariantId}
                       className="border p-4 bg-white rounded"
                     >
-                      {/* Hiển thị thông tin sản phẩm */}
                       <div className="flex items-center gap-4 mb-4">
                         <img
                           src={
@@ -222,7 +225,6 @@ const handleSubmitAllFeedback = async () => {
                         </div>
                       </div>
 
-                      {/* Rating */}
                       <div className="mb-4 flex items-center">
                         <p className="mr-4">Đánh giá:</p>
                         {[1, 2, 3, 4, 5].map((value) => (
@@ -242,7 +244,6 @@ const handleSubmitAllFeedback = async () => {
                         ))}
                       </div>
 
-                      {/* Nhận xét */}
                       <div className="mb-4">
                         <label className="block mb-1 text-sm font-medium text-gray-700">
                           Nhận xét:
@@ -261,7 +262,6 @@ const handleSubmitAllFeedback = async () => {
                         />
                       </div>
 
-                      {/* Upload hình ảnh */}
                       <div className="mb-4">
                         <label className="block mb-1 text-sm font-medium text-gray-700">
                           Tải lên hình ảnh (tùy chọn):

@@ -9,6 +9,7 @@ export type Feedback = {
   createdDate: string;
   imagePath: string;
   orderDetailId: number;
+  account: string;
 }
 export type FeedbackListResponse = {
   data: Feedback[];
@@ -314,6 +315,7 @@ export type OrderItem = {
   color: string;
   priceAtPurchase: number;
   discountApplied: number;
+  productId: number; // Thêm trường productId nếu cần thiết
 };
 
 // Định nghĩa type cho dữ liệu đơn hàng (order)
@@ -326,6 +328,7 @@ export type Order = {
   paymentUrl: string;
   storeId: number;
   items: OrderItem[];
+  ghnid: string;
 };
 
 // Định nghĩa type cho response trả về từ backend
@@ -349,6 +352,7 @@ export type OrderDetailItem = {
   color: string;
   priceAtPurchase: number;
   discountApplied: number;
+  productId: number; // Thêm trường productId nếu cần thiết
 };
 
 // Thông tin store
@@ -514,7 +518,7 @@ export type CreateFeedbackRequest = {
   rating?: number;          // int? bên C#
   comment?: string;         // string? bên C#
   createdDate?: string;     // DateTime? => gửi chuỗi ISO
-  imagePath?: string;       // string? bên C#
+  imageFile?: string;       // string? bên C#
 };
 
 export type CreateFeedbackResponse = {
@@ -574,4 +578,12 @@ export type GoogleLoginResponse = {
 }
 export type GoogleLoginRequest = {
   idToken: string;
+};
+
+export type GHNRequest = {
+  order_code: string;
+}
+export type GHNResponse = {
+  status: string;
+  updateDate: string;
 };

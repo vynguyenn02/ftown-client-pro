@@ -554,7 +554,7 @@ export default function ProductDetailPage({ params }: { params: { productId: str
               {feedbackList.map((fb) => (
                 <div key={fb.feedbackId} className="border p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="font-medium">User #{fb.accountId}</p>
+                    <p className="font-medium">Tên: {fb.account}</p>
                     <StarRating rating={fb.rating} />
                   </div>
                   <p className="text-gray-400 text-sm">{fb.createdDate}</p>

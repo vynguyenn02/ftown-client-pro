@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import toast from "react-hot-toast";
 import orderService from "@/services/order.service";
@@ -13,7 +13,7 @@ import Sidebar from "@/components/Sidebar/Sidebar";
 
 export default function OrderDetailPage() {
   const router = useRouter();
-  const params = useParams(); 
+  const params = useParams();
   const rawOrderId = params?.orderId;
 
   if (!rawOrderId || Array.isArray(rawOrderId)) {
@@ -30,7 +30,6 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Gọi API lấy chi tiết đơn hàng
     const fetchOrderDetail = async () => {
       try {
         const res = await orderService.getOrderDetailByOrderId(orderId);
@@ -75,7 +74,6 @@ export default function OrderDetailPage() {
     );
   }
 
-  // Tính tổng thanh toán
   const totalPayment = order.orderTotal + order.shippingCost;
 
   return (
@@ -83,13 +81,9 @@ export default function OrderDetailPage() {
       <Header />
       <main className="flex-1 pt-20">
         <div className="container mx-auto flex gap-8 p-6">
-          {/* Sidebar bên trái */}
           <Sidebar />
 
-          {/* Cột phải: nội dung chi tiết đơn hàng */}
           <div className="flex-1 space-y-4">
-            
-            {/* Thông tin cơ bản đơn hàng */}
             <div className="bg-white p-4 shadow">
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-lg font-semibold">
@@ -112,7 +106,6 @@ export default function OrderDetailPage() {
               </p>
             </div>
 
-            {/* Thông tin người nhận + địa chỉ */}
             <div className="bg-white p-4 shadow">
               <h3 className="text-md font-semibold mb-3">Thông tin nhận hàng</h3>
               <div className="text-sm text-gray-700 space-y-1">
@@ -130,7 +123,8 @@ export default function OrderDetailPage() {
                 </p>
                 <p>
                   <span className="font-medium">Địa chỉ:</span>{" "}
-                  {order.address}, {order.district}, {order.city}, {order.province}, {order.country}
+                  {order.address}, {order.district}, {order.city},{" "}
+                  {order.province}, {order.country}
                 </p>
                 <p>
                   <span className="font-medium">Phương thức thanh toán:</span>{" "}
@@ -139,7 +133,6 @@ export default function OrderDetailPage() {
               </div>
             </div>
 
-            {/* Danh sách sản phẩm */}
             <div className="bg-white p-4 shadow">
               <h3 className="text-md font-semibold mb-3">Danh sách sản phẩm</h3>
               {order.orderItems.map((item) => {
@@ -147,15 +140,21 @@ export default function OrderDetailPage() {
                 return (
                   <div
                     key={item.productVariantId}
-                    className="flex items-center gap-4 mb-4 border-b last:border-none pb-4"
+                    onClick={() => router.push(`/product/${item.productId}`)}
+                    className="flex items-center gap-4 mb-4 border-b last:border-none pb-4 cursor-pointer hover:bg-gray-50"
                   >
                     <img
-                      src={item.imageUrl || "https://via.placeholder.com/70x70?text=No+Image"}
+                      src={
+                        item.imageUrl ||
+                        "https://via.placeholder.com/70x70?text=No+Image"
+                      }
                       alt={item.productName}
                       className="w-16 h-16 object-cover border rounded"
                     />
                     <div className="text-sm flex-1">
-                      <p className="font-medium text-gray-800">{item.productName}</p>
+                      <p className="font-medium text-gray-800">
+                        {item.productName}
+                      </p>
                       <p className="text-gray-600">Size: {item.size}</p>
                       <p className="text-gray-600 flex items-center">
                         Màu:{" "}
@@ -165,7 +164,8 @@ export default function OrderDetailPage() {
                         />
                       </p>
                       <p className="text-gray-600">
-                        Giá: {item.priceAtPurchase.toLocaleString("vi-VN")}₫ x {item.quantity}
+                        Giá: {item.priceAtPurchase.toLocaleString("vi-VN")}₫ x{" "}
+                        {item.quantity}
                       </p>
                       <p className="text-gray-800 font-semibold">
                         Thành tiền: {totalItemPrice.toLocaleString("vi-VN")}₫
@@ -176,10 +176,11 @@ export default function OrderDetailPage() {
               })}
             </div>
 
-            {/* Tổng giá + phí ship + nút hành động */}
             <div className="bg-white p-4 shadow space-y-4">
               <div>
-                <h3 className="text-md font-semibold mb-3">Tổng thanh toán</h3>
+                <h3 className="text-md font-semibold mb-3">
+                  Tổng thanh toán
+                </h3>
                 <div className="text-sm text-gray-700 space-y-1">
                   <div className="flex justify-between">
                     <span>Tạm tính</span>
@@ -213,28 +214,26 @@ export default function OrderDetailPage() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      router.push(`/profile/return-item/request?orderId=${order.orderId}`);
+                      router.push(
+                        `/profile/return-item/request?orderId=${order.orderId}`
+                      );
                     }}
                     className="bg-red-600 text-white px-4 py-2 text-sm font-semibold rounded"
                   >
                     Đổi/Trả hàng
                   </button>
                 </div>
-              ) : order.status === "Pending Confirmed" || order.status ==="Delivered" || order.status ==="Confirmed" || order.status ==="Shipping" ? (
+              ) : (
                 <div className="flex gap-3">
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      router.push("/product");
-                    }}
+                    onClick={() => router.push("/product")}
                     className="bg-green-600 text-white px-4 py-2 text-sm font-semibold rounded"
                   >
                     Tiếp tục mua sắm
                   </button>
                 </div>
-              ) : null}
+              )}
             </div>
-
           </div>
         </div>
       </main>
