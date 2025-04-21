@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCookie } from "cookies-next";
 import toast from "react-hot-toast";
@@ -8,37 +9,34 @@ import { Order } from "@/types";
 import Header from "@/components/Header/Header";
 import Footer from "@/components/Footer/Footer";
 import Sidebar from "@/components/Sidebar/Sidebar";
-import Link from "next/link";
 
-// BroadcastChannel for logout events
+// BroadcastChannel cho sự kiện logout
 let bc: BroadcastChannel | null = null;
 if (typeof window !== "undefined") {
   bc = new BroadcastChannel("funky-logout");
 }
 
-// Helper function for status badge styling
+// Type‑guard: payload có pagination hay không
+function isPagination<T>(obj: any): obj is { items: T[] } {
+  return obj && typeof obj === "object" && Array.isArray(obj.items);
+}
+
+// Helper cho badge status
 const getStatusColorClass = (status: string) => {
   switch (status) {
-    case "Cancel":
-      return "bg-red-100 text-red-500";
-    case "Shipped":
-      return "bg-green-100 text-green-500";
-    case "Shipping":
-      return "bg-blue-100 text-blue-500";
-    case "Pending Confirmed":
-      return "bg-yellow-100 text-yellow-500";
-    case "Confirmed":
-      return "bg-gray-100 text-gray-500";
-    case "Completed":
-      return "bg-purple-100 text-purple-500";
-    default:
-      return "bg-gray-100 text-gray-500";
+    case "Cancel":            return "bg-red-100 text-red-500";
+    case "Shipped":           return "bg-green-100 text-green-500";
+    case "Shipping":          return "bg-blue-100 text-blue-500";
+    case "Pending Confirmed": return "bg-yellow-100 text-yellow-500";
+    case "Confirmed":         return "bg-gray-100 text-gray-500";
+    case "Completed":         return "bg-purple-100 text-purple-500";
+    default:                  return "bg-gray-100 text-gray-500";
   }
 };
 
 const tabs = [
-  { label: "Hoàn thành", value: "Completed" },
-  { label: "Đã trả hàng", value: "Cancel" },
+  { label: "Hoàn thành",       value: "Completed" },
+  { label: "Yêu cầu trả hàng", value: "Return Requested" },
 ];
 
 export default function ReturnItemPage() {
@@ -48,73 +46,76 @@ export default function ReturnItemPage() {
   const [activeTab, setActiveTab] = useState("Completed");
   const [searchValue, setSearchValue] = useState("");
 
-  // Listen for logout events
+  // Lắng nghe logout
   useEffect(() => {
     if (bc) {
-      bc.onmessage = (ev) => {
+      bc.onmessage = ev => {
         if (ev.data === "logout") {
           setOrders([]);
         }
       };
     }
-    return () => {
-      if (bc) bc.onmessage = null;
-    };
+    return () => { if (bc) bc.onmessage = null; };
   }, []);
 
-  // Function to fetch orders based on activeTab
-  const fetchOrders = () => {
+  // Fetch orders cho cả hai tab
+  const fetchOrders = async () => {
     const accountId = Number(getCookie("accountId"));
     if (!accountId) {
       toast.error("Bạn chưa đăng nhập!");
       router.push("/login");
       return;
     }
+
     setLoading(true);
-    if (activeTab === "Completed") {
-      orderService
-        . getOrdersReturnByAccountId(accountId)
-        .then((res) => {
-          if (res.data.status) {
-            setOrders(res.data.data);
-          } else {
-            toast.error(res.data.message);
-          }
-        })
-        .catch(() => toast.error("Có lỗi xảy ra khi lấy đơn hàng hoàn thành!"))
-        .finally(() => setLoading(false));
-    } else if (activeTab === "Cancel") {
-      orderService
-        .getOrdersByAccountId(accountId, "Cancel")
-        .then((res) => {
-          if (res.data.status) {
-            setOrders(res.data.data);
-          } else {
-            toast.error(res.data.message);
-          }
-        })
-        .catch(() => toast.error("Có lỗi xảy ra khi lấy đơn hàng đã trả hàng!"))
-        .finally(() => setLoading(false));
+    try {
+      // Gọi API tùy tab
+      const res =
+        activeTab === "Completed"
+          ? await orderService.getOrdersReturnByAccountId(accountId)
+          : await orderService.getOrdersByAccountId(accountId, "Return Requested");
+
+      if (res.data.status) {
+        const payload = res.data.data;
+        let list: Order[] = [];
+
+        if (isPagination<Order>(payload)) {
+          list = payload.items;
+        } else if (Array.isArray(payload)) {
+          list = payload;
+        } else {
+          list = [];
+        }
+
+        setOrders(list);
+      } else {
+        toast.error(res.data.message);
+        setOrders([]);
+      }
+    } catch {
+      toast.error("Có lỗi xảy ra khi lấy đơn hàng!");
+      setOrders([]);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Khi đổi tab hoặc router
   useEffect(() => {
     fetchOrders();
   }, [activeTab, router]);
 
-  // Filter orders by search value (orderId or product name)
-  const filteredOrders = orders.filter((order) => {
-    if (searchValue) {
-      const inOrderId = order.orderId.toString().includes(searchValue);
-      const inItems = order.items.some((item) =>
-        item.productName.toLowerCase().includes(searchValue.toLowerCase())
-      );
-      return inOrderId || inItems;
-    }
-    return true;
+  // Lọc theo mã đơn hoặc tên sản phẩm
+  const filteredOrders = orders.filter(order => {
+    if (!searchValue) return true;
+    const inId = order.orderId.toString().includes(searchValue);
+    const inName = order.items.some(item =>
+      item.productName.toLowerCase().includes(searchValue.toLowerCase())
+    );
+    return inId || inName;
   });
 
-  if (loading)
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <img
@@ -124,6 +125,7 @@ export default function ReturnItemPage() {
         />
       </div>
     );
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -135,11 +137,13 @@ export default function ReturnItemPage() {
             {/* Search + Tabs */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
               <div className="flex gap-2">
-                {tabs.map((tab) => (
+                {tabs.map(tab => (
                   <button
                     key={tab.value}
                     className={`flex-1 text-center px-3 py-2 border text-sm ${
-                      activeTab === tab.value ? "bg-black text-white" : "bg-white text-gray-600"
+                      activeTab === tab.value
+                        ? "bg-black text-white"
+                        : "bg-white text-gray-600"
                     }`}
                     onClick={() => setActiveTab(tab.value)}
                   >
@@ -153,107 +157,84 @@ export default function ReturnItemPage() {
                   placeholder="Tìm theo mã đơn hoặc tên sản phẩm..."
                   className="border border-gray-300 w-full pr-8 pl-3 py-2 text-sm focus:outline-none"
                   value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
+                  onChange={e => setSearchValue(e.target.value)}
                 />
-                <span className="absolute right-2 top-2 text-gray-400">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 16h.01M12 16h.01M16 16h.01M9 20h6m-7-4v-2a4 4 0 114 4H8a4 4 0 01-4-4V6a4 4 0 014-4 4 4 0 014 4v2"
-                    />
-                  </svg>
-                </span>
+                <span className="absolute right-2 top-2 text-gray-400">🔍</span>
               </div>
             </div>
 
-            {/* Order list */}
+            {/* Danh sách đơn */}
             {filteredOrders.length === 0 ? (
               <p className="text-gray-500">Không có đơn hàng nào.</p>
             ) : (
-              filteredOrders.map((order) => (
-                // <Link key={order.orderId} href={`/profile/order/${order.orderId}`}>
-                  <div className="border p-4 mb-4 bg-white space-y-3 cursor-pointer hover:bg-gray-50">
-                    {/* Order header */}
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                      <div className="flex flex-col text-gray-600">
-                        <span className="text-sm">Đơn hàng #{order.orderId}</span>
-                      </div>
+              filteredOrders.map(order => (
+                <div
+                  key={order.orderId}
+                  className="border p-4 mb-4 bg-white space-y-3 hover:bg-gray-50 cursor-pointer"
+                >
+                  {/* Header */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Đơn hàng #{order.orderId}</span>
+                    <span className={`border px-2 py-1 text-sm font-medium ${getStatusColorClass(order.status)}`}>
+                      {order.status}
+                    </span>
+                  </div>
+
+                  {/* Items */}
+                  {order.items.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-3 border-b pb-2 mb-2 last:border-none"
+                    >
+                      <img
+                        src={item.imageUrl || "https://via.placeholder.com/70"}
+                        alt={item.productName || "Sản phẩm"}
+                        className="w-16 h-16 object-cover border"
+                      />
                       <div>
-                        <span
-                          className={`border border-gray-300 px-2 py-1 text-sm font-medium ${getStatusColorClass(
-                            order.status
-                          )}`}
-                        >
-                          {order.status}
-                        </span>
+                        <p className="font-semibold">{item.productName}</p>
+                        <p className="text-gray-500">
+                          {item.priceAtPurchase.toLocaleString("vi-VN")}₫ x {item.quantity}
+                        </p>
                       </div>
                     </div>
+                  ))}
 
-                    {/* Order items */}
-                    {order.items.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-3 border-b pb-2 mb-2 last:border-none last:mb-0 last:pb-0"
-                      >
-                        <img
-                          src={item.imageUrl || "https://via.placeholder.com/70x70?text=No+Image"}
-                          alt={item.productName || "Sản phẩm"}
-                          width={70}
-                          height={70}
-                          className="object-cover border"
-                        />
-                        <div className="flex-1 text-gray-700">
-                          <p className="font-semibold">{item.productName}</p>
-                          <p className="text-gray-500">
-                            {item.priceAtPurchase.toLocaleString("vi-VN")}đ x {item.quantity}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-
-                    {/* Order summary and buttons */}
-                    <div className="flex items-center justify-between">
-                      <p className="text-gray-600">
-                        Tạm tính:{" "}
-                        <span className="font-semibold text-gray-800">
-                          {order.subTotal.toLocaleString("vi-VN")}đ
-                        </span>
-                      </p>
-                      <div className="flex gap-2">
-                        {order.status === "completed" && (
-                          <>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                router.push("/profile/order/feedback");
-                              }}
-                              className="bg-blue-600 text-white px-4 py-2 text-sm font-semibold"
-                            >
-                              Đánh giá
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                router.push(`/profile/order/${order.orderId}`);
-                              }}
-                              className="bg-red-600 text-white px-4 py-2 text-sm font-semibold"
-                            >
-                              ĐỔI/ TRẢ HÀNG
-                            </button>
-                          </>
-                        )}
-                      </div>
+                  {/* Summary & Actions */}
+                  <div className="flex justify-between items-center">
+                  <div className="space-y-1">
+ 
+  <p className="text-gray-600">
+    Phí ship:{" "}
+      {order.shippingCost.toLocaleString("vi-VN")}₫
+  </p>
+  <p className="text-gray-900">
+    Tổng:{" "}
+    <strong className="text-gray-800">
+      {(order.subTotal + order.shippingCost).toLocaleString("vi-VN")}₫
+    </strong>
+  </p>
+</div>
+                    <div className="flex gap-2">
+                      {order.status.toLowerCase() === "completed" && (
+                        <>
+                          <button
+                            onClick={() => router.push("/profile/order/feedback")}
+                            className="bg-blue-600 text-white px-4 py-2 text-sm rounded"
+                          >
+                            Đánh giá
+                          </button>
+                          <button
+                            onClick={() => router.push(`/profile/order/${order.orderId}`)}
+                            className="bg-red-600 text-white px-4 py-2 text-sm rounded"
+                          >
+                            ĐỔI/ TRẢ HÀNG
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
-                // </Link>
+                </div>
               ))
             )}
           </div>

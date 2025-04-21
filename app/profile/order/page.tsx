@@ -33,6 +33,7 @@ const tabs = [
   { label: "Đã giao hàng", value: "Delivered" },
   { label: "Hoàn thành", value: "Completed" },
   { label: "Đã hủy", value: "Cancel" },
+  // { label: "Yêu cầu trả hàng", value: "Return Requested" }, // nếu bạn có tab cho Return Requested
 ];
 
 export default function OrderPage() {
@@ -98,19 +99,23 @@ export default function OrderPage() {
     fetchOrders();
   }, [activeTab]);
 
-  // poll GHN status every 30s, but skip if status đã "Completed"
+  // poll GHN status every 30s, but skip if status in skipStatuses
   useEffect(() => {
     if (pollRef.current) clearInterval(pollRef.current);
 
+    const skipStatuses = ["completed", "cancel", "return requested"];
     const poll = () => {
       orders.forEach(o => {
-        const isCompleted = o.status.toLowerCase() === "completed";
-        if (!o.ghnid || isCompleted) return;
+        const statusLower = o.status.toLowerCase();
+        if (!o.ghnid || skipStatuses.includes(statusLower)) {
+          return; // bỏ qua nếu đã complete, cancel hoặc return requested
+        }
 
         orderService.orderStatusNewest(o.ghnid)
           .then(res => {
             const s = res.data.status;
             const newStatus = s.charAt(0).toUpperCase() + s.slice(1);
+            // chỉ update nếu GHN trả về chưa hoàn thành
             if (newStatus.toLowerCase() !== "completed") {
               setOrders(prev =>
                 prev.map(x =>
@@ -231,9 +236,15 @@ export default function OrderPage() {
                       ))}
 
                       <div className="flex justify-between items-center mt-3">
-                        <span>
-                          Tạm tính: <strong>{o.subTotal.toLocaleString("vi-VN")}₫</strong>
-                        </span>
+                      <div className="mt-3 space-y-1">
+  
+                        <p className="text-gray-600">
+                          Phí vận chuyển: {o.shippingCost.toLocaleString("vi-VN")}₫
+                        </p>
+                        <p className="text-gray-900">
+                          Tổng: <strong>{(o.subTotal + o.shippingCost).toLocaleString("vi-VN")}₫</strong>
+                        </p>
+                      </div>
                         {o.status === "Delivered" && (
                           <button
                             onClick={e => {
