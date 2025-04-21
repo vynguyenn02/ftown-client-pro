@@ -87,12 +87,18 @@ export default function LogInPage() {
               <LoginWithGoogle />
             </div>
             <div className="mt-4 text-center">
-              <Link
+            <Link
+                href="/signup"
+                className="text-blue-600 hover:underline"
+              >
+                Đăng ký tài khoản mới
+              </Link>
+              {/* <Link
                 href="/forgot-password"
                 className="text-blue-600 hover:underline"
               >
                 Quên mật khẩu?
-              </Link>
+              </Link> */}
             </div>
           </div>
         </div>

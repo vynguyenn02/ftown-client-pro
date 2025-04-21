@@ -26,7 +26,8 @@ export const ORDER_ENDPOINT = {
   CONFIRM_RECEIVE: "/orders/{orderId}/status",
   ORDER_STATUS_NEWEST: "/ghn/order-status-newest",
 };
-
+const DEFAULT_PAGE = 1;
+const DEFAULT_SIZE = 10;
 class OrderService {
   /**
    * Tạo đơn hàng mới.
@@ -44,9 +45,17 @@ class OrderService {
    */
   getOrdersByAccountId(
     accountId: number,
-    status: string
+    status: string,
+    pageNumber: number = DEFAULT_PAGE,
+    pageSize:   number = DEFAULT_SIZE
   ): Promise<AxiosResponse<GetOrdersResponse>> {
-    return get(`${ORDER_ENDPOINT.GET_ORDERS}?status=${status}&accountId=${accountId}`);
+    const params = new URLSearchParams({
+      accountId:  accountId.toString(),
+      status,
+      pageNumber: pageNumber.toString(),
+      pageSize:   pageSize.toString(),
+    });
+    return get(`${ORDER_ENDPOINT.GET_ORDERS}?${params.toString()}`);
   }
   getOrdersReturnByAccountId(
     accountId: number,
@@ -55,13 +64,17 @@ class OrderService {
     return get(`${ORDER_ENDPOINT.GET_ORDERS_RETURNABLE}?accountId=${accountId}`);
   }
 
-  /**
-   * Lấy tất cả đơn hàng theo accountId.
-   */
   getAllOrdersByAccountId(
-    accountId: number
+    accountId: number,
+    pageNumber: number = DEFAULT_PAGE,
+    pageSize:   number = DEFAULT_SIZE
   ): Promise<AxiosResponse<GetOrdersResponse>> {
-    return get(`${ORDER_ENDPOINT.GET_ORDERS}?accountId=${accountId}`);
+    const params = new URLSearchParams({
+      accountId:  accountId.toString(),
+      pageNumber: pageNumber.toString(),
+      pageSize:   pageSize.toString(),
+    });
+    return get(`${ORDER_ENDPOINT.GET_ORDERS}?${params.toString()}`);
   }
 
   /**

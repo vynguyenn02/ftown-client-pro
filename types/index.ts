@@ -338,7 +338,7 @@ export type CreateOrderResponse = {
   message: string;
 };
 export type GetOrdersResponse = {
-  data: Order[];
+  data: Pagination<Order>;
   status: boolean;
   message: string;
 };

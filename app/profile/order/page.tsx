@@ -55,14 +55,15 @@ export default function OrderPage() {
     }
 
     setLoading(true);
-    const call = activeTab === "ALL"
-      ? orderService.getAllOrdersByAccountId(accId)
-      : orderService.getOrdersByAccountId(accId, activeTab);
+    const call =
+      activeTab === "ALL"
+        ? orderService.getAllOrdersByAccountId(accId, 1, 10)
+        : orderService.getOrdersByAccountId(accId, activeTab, 1, 10);
 
     call
       .then(res => {
         if (res.data.status) {
-          setOrders(res.data.data);
+          setOrders(res.data.data.items);
         } else {
           toast.error(res.data.message);
         }
@@ -97,41 +98,35 @@ export default function OrderPage() {
     fetchOrders();
   }, [activeTab]);
 
-  // poll GHN status every 30s (nếu cần)
+  // poll GHN status every 30s, but skip if status đã "Completed"
   useEffect(() => {
     if (pollRef.current) clearInterval(pollRef.current);
-    pollRef.current = setInterval(() => {
+
+    const poll = () => {
       orders.forEach(o => {
-        if (!o.ghnid) return;
+        const isCompleted = o.status.toLowerCase() === "completed";
+        if (!o.ghnid || isCompleted) return;
+
         orderService.orderStatusNewest(o.ghnid)
           .then(res => {
             const s = res.data.status;
             const newStatus = s.charAt(0).toUpperCase() + s.slice(1);
-            setOrders(prev =>
-              prev.map(x =>
-                x.orderId === o.orderId ? { ...x, status: newStatus } : x
-              )
-            );
+            if (newStatus.toLowerCase() !== "completed") {
+              setOrders(prev =>
+                prev.map(x =>
+                  x.orderId === o.orderId ? { ...x, status: newStatus } : x
+                )
+              );
+            }
           })
           .catch(() => {});
       });
-    }, 30_000);
+    };
 
-    // initial fetch once
-    orders.forEach(o => {
-      if (!o.ghnid) return;
-      orderService.orderStatusNewest(o.ghnid)
-        .then(res => {
-          const s = res.data.status;
-          const newStatus = s.charAt(0).toUpperCase() + s.slice(1);
-          setOrders(prev =>
-            prev.map(x =>
-              x.orderId === o.orderId ? { ...x, status: newStatus } : x
-            )
-          );
-        })
-        .catch(() => {});
-    });
+    // chạy ngay lần đầu
+    poll();
+    // sau đó lặp mỗi 30s
+    pollRef.current = setInterval(poll, 30_000);
 
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
@@ -169,7 +164,6 @@ export default function OrderPage() {
         <div className="container mx-auto flex gap-8 p-6">
           <Sidebar />
           <div className="flex-1 bg-white p-6 shadow-md">
-
             {/* Tabs & search */}
             <div className="flex flex-col md:flex-row md:justify-between mb-4 gap-4">
               <div className="flex flex-wrap gap-2">
@@ -203,7 +197,6 @@ export default function OrderPage() {
                 {displayed.map(o => (
                   <Link key={o.orderId} href={`/profile/order/${o.orderId}`}>
                     <div className="border p-4 mb-4 bg-white hover:bg-gray-50 cursor-pointer">
-
                       <div className="flex justify-between mb-3">
                         <span>Đơn hàng #{o.orderId}</span>
                         <span className={`px-2 py-1 text-sm border ${getStatusColorClass(o.status)}`}>
@@ -226,7 +219,6 @@ export default function OrderPage() {
                             <p className="text-sm text-gray-600">
                               Giá: {it.priceAtPurchase.toLocaleString("vi-VN")}₫ x {it.quantity}
                             </p>
-                            {/* Hiển thị size & color */}
                             <p className="text-sm text-gray-600">
                               Size: {it.size} – Color:{" "}
                               <span
@@ -254,7 +246,6 @@ export default function OrderPage() {
                           </button>
                         )}
                       </div>
-
                     </div>
                   </Link>
                 ))}
@@ -271,7 +262,6 @@ export default function OrderPage() {
                 )}
               </>
             )}
-
           </div>
         </div>
       </main>
