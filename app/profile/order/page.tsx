@@ -15,13 +15,20 @@ import { Order } from "@/types";
 // map status → tailwind
 const getStatusColorClass = (status: string) => {
   switch (status) {
-    case "Cancel": return "bg-red-100 text-red-500";
-    case "Delivered": return "bg-green-100 text-green-500";
-    case "Shipping": return "bg-blue-100 text-blue-500";
-    case "Pending Confirmed": return "bg-yellow-100 text-yellow-500";
-    case "Confirmed": return "bg-gray-100 text-gray-500";
-    case "Completed": return "bg-purple-100 text-purple-500";
-    default: return "bg-gray-100 text-gray-500";
+    case "Cancel":
+      return "bg-red-100 text-red-500";
+    case "Delivered":
+      return "bg-green-100 text-green-500";
+    case "Shipping":
+      return "bg-blue-100 text-blue-500";
+    case "Pending Confirmed":
+      return "bg-yellow-100 text-yellow-500";
+    case "Confirmed":
+      return "bg-gray-100 text-gray-500";
+    case "Completed":
+      return "bg-purple-100 text-purple-500";
+    default:
+      return "bg-gray-100 text-gray-500";
   }
 };
 
@@ -33,7 +40,6 @@ const tabs = [
   { label: "Đã giao hàng", value: "Delivered" },
   { label: "Hoàn thành", value: "Completed" },
   { label: "Đã hủy", value: "Cancel" },
-  // { label: "Yêu cầu trả hàng", value: "Return Requested" }, // nếu bạn có tab cho Return Requested
 ];
 
 export default function OrderPage() {
@@ -46,34 +52,61 @@ export default function OrderPage() {
 
   const pollRef = useRef<NodeJS.Timeout>();
 
-  // fetch orders
-  const fetchOrders = () => {
+  const confirmStatuses = ["Pending Confirmed", "Paid", "Pending Payment"];
+
+  // 1️⃣ Hàm fetchOrders có spinner, gọi khi user load page hoặc đổi tab
+  const fetchOrders = async () => {
     const accId = Number(getCookie("accountId"));
     if (!accId) {
       toast.error("Bạn chưa đăng nhập!");
       router.push("/login");
       return;
     }
-
     setLoading(true);
-    const call =
-      activeTab === "ALL"
-        ? orderService.getAllOrdersByAccountId(accId, 1, 10)
-        : orderService.getOrdersByAccountId(accId, activeTab, 1, 10);
-
-    call
-      .then(res => {
-        if (res.data.status) {
-          setOrders(res.data.data.items);
+    try {
+      const res = await orderService.getAllOrdersByAccountId(accId, 1, 10);
+      if (!res.data.status) {
+        toast.error(res.data.message);
+      } else {
+        let data = res.data.data.items as Order[];
+        if (activeTab === "ALL") {
+          // không lọc
+        } else if (activeTab === "Pending Confirmed") {
+          data = data.filter(o => confirmStatuses.includes(o.status));
         } else {
-          toast.error(res.data.message);
+          data = data.filter(o => o.status === activeTab);
         }
-      })
-      .catch(() => toast.error("Lấy đơn hàng thất bại"))
-      .finally(() => setLoading(false));
+        setOrders(data);
+      }
+    } catch {
+      toast.error("Lấy đơn hàng thất bại");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // confirm receive
+  // 2️⃣ Hàm refreshOrders không spinner, chỉ dùng trong polling
+  const refreshOrders = async () => {
+    const accId = Number(getCookie("accountId"));
+    if (!accId) return;
+    try {
+      const res = await orderService.getAllOrdersByAccountId(accId, 1, 10);
+      if (res.data.status) {
+        let data = res.data.data.items as Order[];
+        if (activeTab === "ALL") {
+        } else if (activeTab === "Pending Confirmed") {
+          data = data.filter(o => confirmStatuses.includes(o.status));
+        } else {
+          data = data.filter(o => o.status === activeTab);
+        }
+        setOrders(data);
+      }
+    } catch {
+      // silent fail
+    }
+  };
+
+  // Xác nhận đã nhận hàng
   const handleConfirmReceived = (orderId: number) => {
     const accId = Number(getCookie("accountId"));
     if (!accId) {
@@ -81,7 +114,8 @@ export default function OrderPage() {
       router.push("/login");
       return;
     }
-    orderService.confirmReceive(orderId, accId)
+    orderService
+      .confirmReceive(orderId, accId)
       .then(res => {
         if (res.data.status) {
           toast.success(res.data.message);
@@ -93,52 +127,38 @@ export default function OrderPage() {
       .catch(() => toast.error("Xác nhận thất bại"));
   };
 
-  // on tab change
+  // Khi user đổi tab → gọi fetchOrders (với spinner)
   useEffect(() => {
     setShowAll(false);
     fetchOrders();
   }, [activeTab]);
 
-  // poll GHN status every 30s, but skip if status in skipStatuses
+  // Polling: sync GHN → BE, rồi refreshOrders (không spinner)
   useEffect(() => {
     if (pollRef.current) clearInterval(pollRef.current);
 
     const skipStatuses = ["completed", "cancel", "return requested"];
-    const poll = () => {
-      orders.forEach(o => {
-        const statusLower = o.status.toLowerCase();
-        if (!o.ghnid || skipStatuses.includes(statusLower)) {
-          return; // bỏ qua nếu đã complete, cancel hoặc return requested
-        }
 
-        orderService.orderStatusNewest(o.ghnid)
-          .then(res => {
-            const s = res.data.status;
-            const newStatus = s.charAt(0).toUpperCase() + s.slice(1);
-            // chỉ update nếu GHN trả về chưa hoàn thành
-            if (newStatus.toLowerCase() !== "completed") {
-              setOrders(prev =>
-                prev.map(x =>
-                  x.orderId === o.orderId ? { ...x, status: newStatus } : x
-                )
-              );
-            }
-          })
-          .catch(() => {});
-      });
+    const poll = async () => {
+      const toSync = orders.filter(
+        o => o.ghnid && !skipStatuses.includes(o.status.toLowerCase())
+      );
+      await Promise.all(
+        toSync.map(o => orderService.orderStatusNewest(o.ghnid))
+      );
+      refreshOrders();
     };
 
-    // chạy ngay lần đầu
+    // chạy ngay lập tức, sau đó mỗi 30s
     poll();
-    // sau đó lặp mỗi 30s
     pollRef.current = setInterval(poll, 30_000);
 
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [orders]);
+  }, [orders, activeTab]);
 
-  // filter & pagination
+  // Filter & pagination phía client
   const filtered = orders.filter(o => {
     if (!searchValue) return true;
     return (
@@ -169,7 +189,7 @@ export default function OrderPage() {
         <div className="container mx-auto flex gap-8 p-6">
           <Sidebar />
           <div className="flex-1 bg-white p-6 shadow-md">
-            {/* Tabs & search */}
+            {/* Tabs & Search */}
             <div className="flex flex-col md:flex-row md:justify-between mb-4 gap-4">
               <div className="flex flex-wrap gap-2">
                 {tabs.map(t => (
@@ -204,7 +224,11 @@ export default function OrderPage() {
                     <div className="border p-4 mb-4 bg-white hover:bg-gray-50 cursor-pointer">
                       <div className="flex justify-between mb-3">
                         <span>Đơn hàng #{o.orderId}</span>
-                        <span className={`px-2 py-1 text-sm border ${getStatusColorClass(o.status)}`}>
+                        <span
+                          className={`px-2 py-1 text-sm border ${getStatusColorClass(
+                            o.status
+                          )}`}
+                        >
                           {o.status}
                         </span>
                       </div>
@@ -222,7 +246,8 @@ export default function OrderPage() {
                           <div className="flex-1">
                             <p className="font-semibold">{it.productName}</p>
                             <p className="text-sm text-gray-600">
-                              Giá: {it.priceAtPurchase.toLocaleString("vi-VN")}₫ x {it.quantity}
+                              Giá: {it.priceAtPurchase.toLocaleString("vi-VN")}₫ x{" "}
+                              {it.quantity}
                             </p>
                             <p className="text-sm text-gray-600">
                               Size: {it.size} – Color:{" "}
@@ -236,15 +261,17 @@ export default function OrderPage() {
                       ))}
 
                       <div className="flex justify-between items-center mt-3">
-                      <div className="mt-3 space-y-1">
-  
-                        <p className="text-gray-600">
-                          Phí vận chuyển: {o.shippingCost.toLocaleString("vi-VN")}₫
-                        </p>
-                        <p className="text-gray-900">
-                          Tổng: <strong>{(o.subTotal + o.shippingCost).toLocaleString("vi-VN")}₫</strong>
-                        </p>
-                      </div>
+                        <div className="mt-3 space-y-1">
+                          <p className="text-gray-600">
+                            Phí vận chuyển: {o.shippingCost.toLocaleString("vi-VN")}₫
+                          </p>
+                          <p className="text-gray-900">
+                            Tổng:{" "}
+                            <strong>
+                              {(o.subTotal + o.shippingCost).toLocaleString("vi-VN")}₫
+                            </strong>
+                          </p>
+                        </div>
                         {o.status === "Delivered" && (
                           <button
                             onClick={e => {
