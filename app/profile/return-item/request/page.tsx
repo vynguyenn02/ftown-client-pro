@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { getCookie } from "cookies-next";
 import toast from "react-hot-toast";
 import orderService from "@/services/order.service";
-import { GetReturnItemResponse, ReturnData, CreateCheckoutRequest } from "@/types";
+import { ReturnData, CreateCheckoutRequest } from "@/types";
 import Header from "@/components/Header/Header";
 import Footer from "@/components/Footer/Footer";
 import Sidebar from "@/components/Sidebar/Sidebar";
@@ -13,12 +13,12 @@ import Sidebar from "@/components/Sidebar/Sidebar";
 export default function ReturnRequestPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // Expect orderId to be passed in the URL query string (e.g., ?orderId=32)
   const rawOrderId = searchParams.get("orderId");
   const orderId = rawOrderId ? Number(rawOrderId) : null;
 
-  // Sử dụng state kiểu ReturnData mở rộng thêm isSelected
-  const [returnItems, setReturnItems] = useState<(ReturnData & { isSelected: boolean })[]>([]);
+  const [returnItems, setReturnItems] = useState<
+    (ReturnData & { isSelected: boolean; maxQuantity: number; currentQuantity: number })[]
+  >([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,8 +38,12 @@ export default function ReturnRequestPage() {
       try {
         const res = await orderService.getOrdersReturnRequest(accountId, orderId);
         if (res.data.status) {
-          // Gắn thêm field isSelected = false cho mỗi sản phẩm
-          const items = res.data.data.map((item) => ({ ...item, isSelected: false }));
+          const items = res.data.data.map((item: ReturnData) => ({
+            ...item,
+            isSelected: false,
+            maxQuantity: item.quantity,
+            currentQuantity: 1,
+          }));
           setReturnItems(items);
         } else {
           toast.error(res.data.message);
@@ -55,49 +59,50 @@ export default function ReturnRequestPage() {
     fetchReturnItems();
   }, [orderId, router]);
 
-  // Handler: Tick/untick checkbox
   const handleCheckboxChange = (productVariantId: number, checked: boolean) => {
     setReturnItems((prev) =>
       prev.map((item) =>
-        item.productVariantId === productVariantId ? { ...item, isSelected: checked } : item
+        item.productVariantId === productVariantId
+          ? { ...item, isSelected: checked }
+          : item
       )
     );
   };
 
-  // Handler: Giảm số lượng
   const handleDecrement = (productVariantId: number) => {
     setReturnItems((prev) =>
       prev.map((item) => {
         if (item.productVariantId === productVariantId) {
-          const newQty = item.quantity - 1;
-          return { ...item, quantity: newQty < 1 ? 1 : newQty };
+          const q = item.currentQuantity - 1;
+          return { ...item, currentQuantity: q < 1 ? 1 : q };
         }
         return item;
       })
     );
   };
 
-  // Handler: Tăng số lượng
   const handleIncrement = (productVariantId: number) => {
     setReturnItems((prev) =>
-      prev.map((item) =>
-        item.productVariantId === productVariantId
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      )
+      prev.map((item) => {
+        if (item.productVariantId === productVariantId) {
+          const q = item.currentQuantity + 1;
+          return {
+            ...item,
+            currentQuantity: q > item.maxQuantity ? item.maxQuantity : q,
+          };
+        }
+        return item;
+      })
     );
   };
 
-  // Handler: Khi nhấn "Tiếp tục" -> lấy các sản phẩm được chọn và chuyển sang trang checkout trả hàng
   const handleContinue = async () => {
-    // Lấy các sản phẩm được tick chọn
     const selected = returnItems.filter((item) => item.isSelected);
     if (selected.length === 0) {
       toast.error("Vui lòng chọn ít nhất 1 sản phẩm để trả hàng.");
       return;
     }
-  
-    // Lấy accountId từ cookie
+
     const accId = getCookie("accountId");
     if (!accId) {
       toast.error("Bạn chưa đăng nhập!");
@@ -105,27 +110,24 @@ export default function ReturnRequestPage() {
       return;
     }
     const accountId = Number(accId);
-  
-    // Kiểm tra orderId (từ query string, đã chuyển sang số)
+
     if (!orderId || isNaN(orderId)) {
       toast.error("Order ID không hợp lệ!");
       router.push("/profile/return-item");
       return;
     }
-  
-    // Tạo payload theo kiểu CreateCheckoutRequest
+
     const payload: CreateCheckoutRequest = {
-      orderId: orderId.toString(), // chuyển orderId thành string
-      accountId: accountId,
+      orderId: orderId.toString(),
+      accountId,
       selectedItems: selected.map((item) => ({
         productVariantId: item.productVariantId,
-        quantity: item.quantity,
+        quantity: item.currentQuantity,
       })),
     };
-  
+
     try {
       const res = await orderService.checkoutReturn(payload);
-      // res.data có kiểu ReturnCheckOutResponse (theo type của bạn)
       localStorage.setItem("returnCheckoutData", JSON.stringify(res.data));
       toast.success("Yêu cầu trả hàng đã được tạo thành công!");
       router.push("/profile/return-item/request/return-commit");
@@ -138,7 +140,6 @@ export default function ReturnRequestPage() {
       }
     }
   };
-  
 
   if (loading) {
     return (
@@ -167,7 +168,7 @@ export default function ReturnRequestPage() {
             ) : (
               <div className="space-y-4">
                 {returnItems.map((item) => {
-                  const totalPrice = item.priceAtPurchase * item.quantity;
+                  const totalPrice = item.priceAtPurchase * item.currentQuantity;
                   return (
                     <div
                       key={item.productVariantId}
@@ -183,10 +184,7 @@ export default function ReturnRequestPage() {
                         />
                       </div>
                       <img
-                        src={
-                          item.imageUrl ||
-                          "https://via.placeholder.com/70x70?text=No+Image"
-                        }
+                        src={item.imageUrl || "https://via.placeholder.com/70x70?text=No+Image"}
                         alt={item.productName}
                         className="w-16 h-16 object-cover border"
                       />
@@ -204,8 +202,7 @@ export default function ReturnRequestPage() {
                           />
                         </p>
                         <p className="text-gray-500">
-                          {item.priceAtPurchase.toLocaleString("vi-VN")}₫ x{" "}
-                          {item.quantity}
+                          {item.priceAtPurchase.toLocaleString("vi-VN")}₫ x {item.currentQuantity}
                         </p>
                         <p className="text-gray-800 font-semibold">
                           Thành tiền: {totalPrice.toLocaleString("vi-VN")}₫
@@ -213,15 +210,25 @@ export default function ReturnRequestPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <button
-                          className="px-2 py-1 border rounded"
                           onClick={() => handleDecrement(item.productVariantId)}
+                          disabled={item.currentQuantity <= 1}
+                          className={`px-2 py-1 border rounded ${
+                            item.currentQuantity <= 1
+                              ? "opacity-50 cursor-not-allowed"
+                              : ""
+                          }`}
                         >
-                          -
+                          –
                         </button>
-                        <span>{item.quantity}</span>
+                        <span>{item.currentQuantity}</span>
                         <button
-                          className="px-2 py-1 border rounded"
                           onClick={() => handleIncrement(item.productVariantId)}
+                          disabled={item.currentQuantity >= item.maxQuantity}
+                          className={`px-2 py-1 border rounded ${
+                            item.currentQuantity >= item.maxQuantity
+                              ? "opacity-50 cursor-not-allowed"
+                              : ""
+                          }`}
                         >
                           +
                         </button>
