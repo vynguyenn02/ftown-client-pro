@@ -350,11 +350,14 @@ export default function Header() {
               </Badge>
             </Link>
 
-            {/* User Menu */}
+            {/* User Icon: nếu đã login thì dẫn thẳng qua /profile */}
             <Dropdown overlay={userMenu} trigger={["hover"]}>
-              <UserOutlined className="text-xl hover:text-black cursor-pointer" />
-            </Dropdown>
-          </div>
+  <UserOutlined
+    className="text-xl hover:text-black cursor-pointer"
+    onClick={userName ? () => router.push("/profile") : undefined}
+  />
+</Dropdown>
+        </div>
         </div>
       </header>
 
