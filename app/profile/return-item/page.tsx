@@ -196,6 +196,13 @@ export default function ReturnItemPage() {
                         <p className="text-gray-500">
                           {item.priceAtPurchase.toLocaleString("vi-VN")}₫ x {item.quantity}
                         </p>
+                        <p className="text-sm text-gray-600">
+                              Size: {item.size} – Color:{" "}
+                              <span
+                                className="inline-block w-4 h-4 border rounded ml-1"
+                                style={{ backgroundColor: item.color }}
+                              />
+                            </p>
                       </div>
                     </div>
                   ))}
@@ -204,26 +211,20 @@ export default function ReturnItemPage() {
                   <div className="flex justify-between items-center">
                   <div className="space-y-1">
  
-  <p className="text-gray-600">
-    Phí ship:{" "}
-      {order.shippingCost.toLocaleString("vi-VN")}₫
-  </p>
-  <p className="text-gray-900">
-    Tổng:{" "}
-    <strong className="text-gray-800">
-      {(order.subTotal + order.shippingCost).toLocaleString("vi-VN")}₫
-    </strong>
-  </p>
-</div>
+                  <p className="text-gray-600">
+                    Phí ship:{" "}
+                      {order.shippingCost.toLocaleString("vi-VN")}₫
+                  </p>
+                  <p className="text-gray-900">
+                    Tổng:{" "}
+                    <strong className="text-gray-800">
+                      {(order.subTotal + order.shippingCost).toLocaleString("vi-VN")}₫
+                    </strong>
+                  </p>
+                </div>
                     <div className="flex gap-2">
                       {order.status.toLowerCase() === "completed" && (
                         <>
-                          <button
-                            onClick={() => router.push("/profile/order/feedback")}
-                            className="bg-blue-600 text-white px-4 py-2 text-sm rounded"
-                          >
-                            Đánh giá
-                          </button>
                           <button
                             onClick={() => router.push(`/profile/order/${order.orderId}`)}
                             className="bg-red-600 text-white px-4 py-2 text-sm rounded"

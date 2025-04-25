@@ -233,7 +233,7 @@ export default function ProfilePage() {
 
                 {/* Avatar Upload (span full width) */}
                 <div className="md:col-span-2">
-                  <label className="block mb-1 font-medium">Avatar</label>
+                  <label className="block mb-1 font-medium">Ảnh đại diện</label>
                   <input
                     type="file"
                     accept="image/*"
