@@ -23,7 +23,7 @@ export default function CheckOutPage() {
   const [selectedAddress, setSelectedAddress] = useState<number | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
   const [showAddAddressModal, setShowAddAddressModal] = useState(false);
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
   // Luôn lấy accountId từ cookie (không phụ thuộc vào shippingAddresses)
   const accountId = Number(getCookie("accountId")) || 0;
 
@@ -82,10 +82,12 @@ export default function CheckOutPage() {
   };
 
   const handlePlaceOrder = async () => {
+    if (isSubmitting) return;
     if (!selectedAddress || !selectedPayment) {
       toast.error("Vui lòng chọn địa chỉ giao hàng và phương thức thanh toán!");
       return;
     }
+    setIsSubmitting(true);
 
     const shippingAddress: ShippingAddress | undefined = checkoutData?.shippingAddresses.find(
       (addr: ShippingAddress) => addr.addressId === selectedAddress
@@ -201,13 +203,14 @@ export default function CheckOutPage() {
                 </label>
               ))}
             </div>
-
             <button
-              onClick={handlePlaceOrder}
-              className="mt-6 w-full px-6 py-3 bg-black text-white font-semibold text-lg rounded"
-            >
-              ĐẶT HÀNG
-            </button>
+        onClick={handlePlaceOrder}
+        disabled={isSubmitting}
+        className={`mt-6 w-full px-6 py-3 font-semibold text-lg rounded text-white
+          bg-black ${isSubmitting ? "opacity-50 cursor-not-allowed" : "hover:opacity-90"}`}
+      >
+        {isSubmitting ? "Đang đặt hàng..." : "ĐẶT HÀNG"}
+      </button>
           </div>
 
           {/* Cột phải: Tóm tắt đơn hàng */}

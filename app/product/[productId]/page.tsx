@@ -28,6 +28,10 @@ import { Button } from "antd";
 // Import component ZoomableImage (phóng to ảnh)
 import ZoomableImage from "@/components/ZoomableImage/ZoomableImage";
 let bc: BroadcastChannel | null = null;
+if (typeof window !== "undefined") {
+  bc = new BroadcastChannel("funky-logout");
+}
+
 
 /** Component hiển thị sao đánh giá (1-5) */
 function StarRating({ rating }: { rating: number }) {
