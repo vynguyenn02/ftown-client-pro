@@ -213,19 +213,31 @@ export default function ProductDetailPage({ params }: { params: { productId: str
   };
 
   /** Hàm tăng/giảm số lượng sản phẩm trong giỏ (gọi API editCart) */
-  const handleEditQuantity = (productVariantId: number, change: number) => {
-    const accId = getCookie("accountId");
-    if (!accId) {
-      toast.error("Bạn chưa đăng nhập!");
-      return;
-    }
-    const accountId = Number(accId);
-    cartService
-      .editCart(accountId, { productVariantId, quantityChange: change })
-      .then((res) => {
-        if (res.data.status) {
-          toast.success(res.data.message);
-          // Cập nhật state cartItems
+ /** Hàm tăng/giảm số lượng trong Drawer giỏ hàng */
+const handleEditQuantity = (productVariantId: number, change: number) => {
+  const accId = getCookie("accountId");
+  if (!accId) {
+    toast.error("Bạn chưa đăng nhập!");
+    return;
+  }
+  const accountId = Number(accId);
+
+  // Lấy số lượng hiện tại của item để kiểm tra
+  const currentItem = cartItems.find(
+    (item) => item.productVariantId === productVariantId
+  );
+
+  cartService
+    .editCart(accountId, { productVariantId, quantityChange: change })
+    .then((res) => {
+      if (res.data.status) {
+        toast.success(res.data.message);
+
+        if (currentItem && currentItem.quantity + change <= 0) {
+          // nếu sau khi thay đổi số lượng <= 0 thì fetch lại toàn bộ giỏ
+          fetchCart(accountId);
+        } else {
+          // ngược lại chỉ update số lượng trong state
           setCartItems((prev) =>
             prev.map((item) =>
               item.productVariantId === productVariantId
@@ -233,15 +245,17 @@ export default function ProductDetailPage({ params }: { params: { productId: str
                 : item
             )
           );
-          // Gửi broadcast event cập nhật giỏ hàng
-          bc?.postMessage("cartUpdated");
-        } else {
-          toast.error(res.data.message);
         }
-      })
-      .catch(() => toast.error("Có lỗi xảy ra khi cập nhật số lượng!"));
-  };
-  
+
+        // gửi broadcast để các nơi khác (Header, Cart page) cũng cập nhật
+        bc?.postMessage("cartUpdated");
+      } else {
+        toast.error(res.data.message);
+      }
+    })
+    .catch(() => toast.error("Có lỗi xảy ra khi cập nhật số lượng!"));
+};
+
   const handleRemoveItem = (productVariantId: number) => {
     const accId = getCookie("accountId");
     if (!accId) {
