@@ -4,7 +4,7 @@ import * as signalR from "@microsoft/signalr";
 import axios from "axios";
 import { NotificationResponse } from "@/types";
 // Sử dụng base URL của API (port 443)
-const SIGNALR_HUB_URL = "https://localhost:7270/notificationHub";
+const SIGNALR_HUB_URL = "https://ftnotificationservice.azurewebsites.net/notificationHub";
 
 // Kiểu dữ liệu trả về từ API BE
 class NotificationService {
@@ -137,7 +137,7 @@ class NotificationService {
     }
     try {
       const response = await axios.get<NotificationResponse>(
-        `https://localhost:7270/api/notifications/user/${accountId}`
+        `https://ftnotificationservice.azurewebsites.net/api/notifications/user/${accountId}`
       );
       console.log("NotificationService: Fetched notifications:", response.data);
       return response.data;
