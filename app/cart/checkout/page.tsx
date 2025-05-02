@@ -118,7 +118,7 @@ export default function CheckOutPage() {
       if (paymentMethodToSend === "PAYOS" && res.data.data.paymentUrl) {
         window.location.href = res.data.data.paymentUrl;
       } else {
-        router.push("/profile/order");
+        router.replace("/profile/order");
       }
     } catch (error: any) {
       console.error("Error placing order:", error);
