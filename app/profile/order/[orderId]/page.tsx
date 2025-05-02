@@ -31,8 +31,23 @@ export default function OrderDetailPage() {
 
   useEffect(() => {
     const fetchOrderDetail = async () => {
+      // Lấy accountId từ cookie
+      const rawAcc = getCookie("accountId");
+      const accountId = rawAcc
+        ? Number(Array.isArray(rawAcc) ? rawAcc[0] : rawAcc)
+        : undefined;
+
+      if (!accountId) {
+        toast.error("Thiếu accountId. Vui lòng đăng nhập lại!");
+        setLoading(false);
+        return;
+      }
+
       try {
-        const res = await orderService.getOrderDetailByOrderId(orderId);
+        const res = await orderService.getOrderDetailByOrderId(
+          orderId,
+          accountId
+        );
         if (res.data.status) {
           setOrder(res.data.data);
         } else {
@@ -45,6 +60,7 @@ export default function OrderDetailPage() {
         setLoading(false);
       }
     };
+
     fetchOrderDetail();
   }, [orderId]);
 

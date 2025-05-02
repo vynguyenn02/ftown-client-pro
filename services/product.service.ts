@@ -1,7 +1,8 @@
 // product.service.ts
 import { AxiosResponse } from "axios";
-import { ProductListResponse, ProductDetailResponse, FavoriteProduct, FavoriteProductResponse } from "@/types";
-import { get, post, remove } from "@/utils/axios";
+import { ProductListResponse, ProductDetailResponse, FavoriteProduct, FavoriteProductResponse, GetPrefferResponse} from "@/types";
+import { get, post, remove, put } from "@/utils/axios";
+import { GET } from "@/app/api/health/route";
 
 export const END_POINT = {
   GET_ALL_PRODUCT: "/products/view-all",   // GET /api/products/view-all?page=1&pageSize=10
@@ -11,6 +12,10 @@ export const END_POINT = {
   GET_ALL_FAVORITE_PRODUCT: "/favorites/{accountId}",
   GET_ALL_PRODUCT_BY_CATEGORY: "/products/filter-by-category",
   GET_BEST_SELLER_PRODUCT: "/products/top-selling-products",
+  POST_INTERACTION: "/customer/products/interactions",
+  GET_SUGGESTION: "/customer/suggestions",
+  GET_PREFER_STYLE: "/customer/preferred-styles/{accountId}",
+  PUT_PREFER_STYLE: "/customer/preferred-styles/{accountId}",
 };
 
 class ProductService {
@@ -63,6 +68,37 @@ class ProductService {
     from.setMonth(from.getMonth() - 1);
     const url = `${END_POINT.GET_BEST_SELLER_PRODUCT}?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}&top=${top}`;
     return get(url);
+  }
+  getPreferredStyles(accountId: number): Promise<AxiosResponse<GetPrefferResponse>> {
+    const url = END_POINT.GET_PREFER_STYLE.replace("{accountId}", String(accountId));
+    return get(url);
+  }
+  updatePreferredStyles(
+    accountId: number,
+    styleIds: number[]
+  ): Promise<AxiosResponse<{ status: boolean; message: string }>> {
+    const url = END_POINT.PUT_PREFER_STYLE.replace("{accountId}", String(accountId));
+    return put(url, { styleIds });
+  }
+  getAllSuggest(
+    accountId: number,
+    page = 1,
+    pageSize = 10
+  ): Promise<AxiosResponse<ProductListResponse>> {
+    const url = `${END_POINT.GET_SUGGESTION}` +
+      `?accountId=${accountId}` +
+      `&page=${page}` +
+      `&pageSize=${pageSize}`;
+    return get(url);
+  }
+  postInteraction(
+    accountId: number,
+    productId: number
+  ): Promise<AxiosResponse<{ status: boolean; message: string }>> {
+    return post(END_POINT.POST_INTERACTION, {
+      accountId,
+      productId,
+    });
   }
 }
 

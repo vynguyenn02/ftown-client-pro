@@ -7,6 +7,7 @@ import PromotionCode from "@/components/PromotionCode/PromotionCode";
 import Advertise from "@/components/Advertise/Advertise";
 import Chatbot from "@/components/ChatBot/ChatBot";
 import { ChatBotProvider } from "@/contexts/ChatBotContextProps";
+import Suggest from "@/components/Suggest/Suggest";
 export default function Page() {
   return (
     <div className="flex min-h-screen flex-col">
@@ -14,7 +15,7 @@ export default function Page() {
       <main className="flex-1 pt-20">
         <Banner />
         <BestSeller />
-        <Styling />
+        <Suggest />
         <PromotionCode />
         <Advertise />
         <ChatBotProvider>

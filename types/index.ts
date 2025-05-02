@@ -587,3 +587,13 @@ export type GHNResponse = {
   status: string;
   updateDate: string;
 };
+export type PreferredStyle = {
+  styleId: number;
+  styleName: string;
+  isSelected: boolean;
+}
+export type GetPrefferResponse = {
+  data: PreferredStyle[];
+  status: boolean;
+  message: string;
+}

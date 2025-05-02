@@ -1,22 +1,41 @@
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
-  // TODO: Feel free to remove this block
-  if (request.headers?.get("host")?.includes("examples.hdang09.tech")) {
-    return NextResponse.redirect("https://examples", { status: 301 })
+const PUBLIC_PATHS = ['/', '/login', '/signup', '/product']; 
+
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  console.log('🛠 [MW] path=', pathname);
+  console.log('🛠 [MW] cookies=', req.cookies.getAll());
+
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/static') ||
+    pathname.match(/\.(.*)$/)
+  ) {
+    return NextResponse.next();
   }
+
+  if (PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))) {
+    console.log('🟢 [MW] public, skip auth');
+    return NextResponse.next();
+  }
+
+  const token = req.cookies.get('token')?.value;
+  console.log('🔒 [MW] protecting, token=', token);
+
+  if (!token) {
+    const url = req.nextUrl.clone();
+    url.pathname = '/login';
+    url.searchParams.set('from', pathname);
+    console.log('➡️ [MW] redirect to login');
+    return NextResponse.redirect(url);
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
-  ],
-}
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+};

@@ -24,6 +24,7 @@ export const ORDER_ENDPOINT = {
   POST_RETURN_REQUEST_CHECKOUT: "/return-requests/checkout",
   SUBMIT_RETURN_REQUEST: "/return-requests/submit-return-request",
   CONFIRM_RECEIVE: "/orders/{orderId}/status",
+  CANCLE_OREDER: "/orders/{orderId}/status",
   ORDER_STATUS_NEWEST: "/ghn/order-status-newest",
 };
 const DEFAULT_PAGE = 1;
@@ -80,11 +81,22 @@ class OrderService {
   /**
    * Lấy chi tiết đơn hàng theo orderId.
    */
+  // getOrderDetailByOrderId(
+  //   orderId: number
+  // ): Promise<AxiosResponse<GetOrderDetailResponse>> {
+  //   const url = ORDER_ENDPOINT.GET_ORDER_DETAIL.replace("{orderId}", String(orderId));
+  //   return get(url);
+  // }
   getOrderDetailByOrderId(
-    orderId: number
+    orderId: number,
+    accountId: number
   ): Promise<AxiosResponse<GetOrderDetailResponse>> {
-    const url = ORDER_ENDPOINT.GET_ORDER_DETAIL.replace("{orderId}", String(orderId));
-    return get(url);
+    const url = ORDER_ENDPOINT.GET_ORDER_DETAIL.replace(
+      "{orderId}",
+      String(orderId)
+    );
+    // Gắn query ?accountId=...
+    return get(`${url}?accountId=${accountId}`);
   }
   getOrdersReturnRequest(
       accountId: number,
@@ -143,8 +155,20 @@ class OrderService {
       const payload: GHNRequest = { order_code: ghnid };
       return post(ORDER_ENDPOINT.ORDER_STATUS_NEWEST, payload);
     }
-    
-    
+    // Trong order.service.ts (hoặc service tương ứng)
+cancelOrder(
+  orderId: number,
+  changedBy: number,             // accountId truyền từ component
+  comment: string = "Hủy đơn"    // comment mặc định
+): Promise<AxiosResponse<ConfirmReceive>> {
+  const url = ORDER_ENDPOINT. CANCLE_OREDER.replace("{orderId}", String(orderId));
+  return put(url, {
+    newStatus: "Cancled",  // hoặc "Canceled" nếu API dùng spelling chuẩn
+    changedBy,
+    comment,
+  });
+}
+
   }
 
   const orderService = new OrderService();

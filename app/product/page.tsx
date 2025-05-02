@@ -2,78 +2,88 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { getCookie } from "cookies-next";
+
 import Header from "@/components/Header/Header";
 import Footer from "@/components/Footer/Footer";
 import BestSeller from "@/components/BestSeller/BestSeller";
+import Suggest from "@/components/Suggest/Suggest";
+
 import productService from "@/services/product.service";
 import { Product } from "@/types";
 
-// Hàm format giá tiền (VD: 620.000đ)
-const formatPrice = (price: number) => {
-  return price.toLocaleString("vi-VN") + "đ";
-};
+// format giá theo VNĐ
+const formatPrice = (price: number) => price.toLocaleString("vi-VN") + "đ";
 
 export default function ProductPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // Lấy giá trị category từ URL nếu có (ví dụ: /products?category=áo)
-  const initialCategory = searchParams.get("category") || "";
 
+  // value category từ query
+  const initialCategory = searchParams.get("category") || "";
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [products, setProducts] = useState<Product[]>([]);
   const [filterText, setFilterText] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
 
-  // Mỗi khi query params thay đổi, cập nhật lại state selectedCategory.
+  // accountId lấy từ cookie
+  const raw = getCookie("accountId");
+  const accountId = raw
+    ? Number(Array.isArray(raw) ? raw[0] : raw)
+    : undefined;
+
+  // sync category khi URL thay đổi
   useEffect(() => {
-    const categoryFromQuery = searchParams.get("category") || "";
-    setSelectedCategory(categoryFromQuery);
+    setSelectedCategory(searchParams.get("category") || "");
   }, [searchParams]);
 
-  // Gọi API mỗi khi selectedCategory thay đổi
+  // fetch product khi category thay đổi
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        let response;
-        if (selectedCategory) {
-          response = await productService.getAllProductsByCategory(selectedCategory, 1, 30);
-        } else {
-          response = await productService.getAllProducts(1, 30);
-        }
-        console.log("Full Response:", response);
-        console.log("Fetched Products:", response.data);
-        setProducts(response.data.data);
-      } catch (error) {
-        console.error("Error fetching products:", error);
+        const resp = selectedCategory
+          ? await productService.getAllProductsByCategory(
+              selectedCategory,
+              1,
+              30
+            )
+          : await productService.getAllProducts(1, 30);
+
+        setProducts(resp.data.data);
+      } catch (err) {
+        console.error("Error fetching products:", err);
       }
     };
-
     fetchProducts();
   }, [selectedCategory]);
 
-  // Lọc sản phẩm theo tên (tìm kiếm trên client)
-  const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(filterText.toLowerCase())
+  // filter theo tên
+  const filteredProducts = products.filter((p) =>
+    p.name.toLowerCase().includes(filterText.toLowerCase())
   );
+
+  // khi click vào 1 product
+  const handleClick = (productId: number) => {
+    if (accountId) {
+      productService
+        .postInteraction(accountId, productId)
+        .catch((_) => {
+          /* swallow error */
+        });
+    }
+    router.push(`/product/${productId}`);
+  };
 
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
 
-      {/* Banner */}
-      <div className="w-full">
-        <img
-          src="https://res.cloudinary.com/dqjtkdldj/image/upload/v1743516399/Frame_3_d8lltq.png"
-          alt="COLLECTION"
-          className="w-full"
-        />
-      </div>
-
-      <main className="flex-1 px-6 pt-10 lg:px-20">
-        {/* Header section với tiêu đề và ô lọc */}
+      <main className="flex-1 px-6 pt-24 lg:px-20">
+        {/* Tiêu đề + filter */}
         <div className="flex justify-between items-center border-b pb-3 mb-6">
           <h2 className="text-lg font-bold uppercase">
-            Sản phẩm {selectedCategory ? `- ${selectedCategory}` : ""}
+            Sản phẩm {selectedCategory && `- ${selectedCategory}`}
           </h2>
+
           <div className="flex items-center">
             <input
               type="text"
@@ -82,13 +92,13 @@ export default function ProductPage() {
               onChange={(e) => setFilterText(e.target.value)}
               className="border border-gray-300 px-3 py-1"
             />
+
             <select
               value={selectedCategory}
               onChange={(e) => {
-                const category = e.target.value;
-                setSelectedCategory(category);
-                // Đồng bộ URL với lựa chọn của người dùng
-                router.push(`/product?category=${encodeURIComponent(category)}`);
+                const cat = e.target.value;
+                setSelectedCategory(cat);
+                router.push(`/product?category=${encodeURIComponent(cat)}`);
               }}
               className="border border-gray-300 px-3 py-1 ml-3"
             >
@@ -101,19 +111,22 @@ export default function ProductPage() {
           </div>
         </div>
 
-        {/* Grid hiển thị sản phẩm */}
+        {/* Grid sản phẩm */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {filteredProducts.map((product) => {
-            // Tính phần trăm giảm dựa trên giá gốc và giá đã giảm
-            const discountPercent = Math.round(
-              ((product.price - product.discountedPrice) / product.price) * 100
-            );
+            const discountPercent = product.discountedPrice
+              ? Math.round(
+                  ((product.price - product.discountedPrice) /
+                    product.price) *
+                    100
+                )
+              : 0;
 
             return (
               <div
                 key={product.productId}
-                className="group text-center cursor-pointer border border-transparent hover:border-4 hover:border-[#808080] transition-all duration-300"
-                onClick={() => router.push(`/product/${product.productId}`)}
+                className="group text-center cursor-pointer border border-transparent hover:border-4 hover:border-gray-300 transition-all duration-300"
+                onClick={() => handleClick(product.productId)}
               >
                 <div className="overflow-hidden">
                   <img
@@ -123,11 +136,11 @@ export default function ProductPage() {
                   />
                 </div>
 
-                {/* Tên sản phẩm */}
-                <p className="mt-3 text-sm md:text-base text-gray-500">{product.name}</p>
+                <p className="mt-3 text-sm md:text-base text-gray-500">
+                  {product.name}
+                </p>
 
-                {/* Giá sản phẩm */}
-                {product.discountedPrice && product.discountedPrice < product.price ? (
+                {product.discountedPrice < product.price ? (
                   <div className="flex items-baseline justify-center gap-2 mt-1">
                     <span className="text-base md:text-lg font-semibold text-black">
                       {formatPrice(product.discountedPrice)}
@@ -145,8 +158,7 @@ export default function ProductPage() {
                   </p>
                 )}
 
-                {/* Hiển thị màu sắc (swatches) */}
-                {product.colors && product.colors.length > 0 && (
+                {product.colors?.length > 0 && (
                   <div className="flex justify-center space-x-2 mt-2">
                     {product.colors.map((color) => (
                       <span
@@ -162,8 +174,8 @@ export default function ProductPage() {
           })}
         </div>
 
-        {/* BestSeller nếu cần */}
         <BestSeller />
+        <Suggest />
       </main>
 
       <Footer />

@@ -108,6 +108,9 @@ const Sidebar: React.FC = () => {
             <Menu.Item key="/favorite" icon={<HeartOutlined />}>
             <Link href="/favorite">Sản phẩm yêu thích</Link>
             </Menu.Item>
+            <Menu.Item key="/style" icon={<StarOutlined />}>
+            <Link href="/style">Phong cách yêu thích</Link>
+            </Menu.Item>
           </Menu.ItemGroup>
         </Menu>
       </Sider>

@@ -49,12 +49,15 @@ export default function OrderPage() {
   const [activeTab, setActiveTab] = useState("ALL");
   const [searchValue, setSearchValue] = useState("");
   const [showAll, setShowAll] = useState(false);
-
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState("");
+  const [onConfirm, setOnConfirm] = useState<() => void>(() => {});
+  
   const pollRef = useRef<NodeJS.Timeout>();
 
   const confirmStatuses = ["Pending Confirmed", "Paid", "Pending Payment"];
 
-  // 1️⃣ Hàm fetchOrders có spinner, gọi khi user load page hoặc đổi tab
+  // Fetch orders with spinner
   const fetchOrders = async () => {
     const accId = Number(getCookie("accountId"));
     if (!accId) {
@@ -70,7 +73,7 @@ export default function OrderPage() {
       } else {
         let data = res.data.data.items as Order[];
         if (activeTab === "ALL") {
-          // không lọc
+          // no filter
         } else if (activeTab === "Pending Confirmed") {
           data = data.filter(o => confirmStatuses.includes(o.status));
         } else {
@@ -85,7 +88,7 @@ export default function OrderPage() {
     }
   };
 
-  // 2️⃣ Hàm refreshOrders không spinner, chỉ dùng trong polling
+  // Refresh orders without spinner (for polling)
   const refreshOrders = async () => {
     const accId = Number(getCookie("accountId"));
     if (!accId) return;
@@ -106,7 +109,7 @@ export default function OrderPage() {
     }
   };
 
-  // Xác nhận đã nhận hàng
+  // Confirm received
   const handleConfirmReceived = (orderId: number) => {
     const accId = Number(getCookie("accountId"));
     if (!accId) {
@@ -125,15 +128,36 @@ export default function OrderPage() {
         }
       })
       .catch(() => toast.error("Xác nhận thất bại"));
+  };  
+
+  // Cancel order
+  const handleCancelOrder = (orderId: number) => {
+    const accId = Number(getCookie("accountId"));
+    if (!accId) {
+      toast.error("Bạn chưa đăng nhập!");
+      router.push("/login");
+      return;
+    }
+    orderService
+      .cancelOrder(orderId, accId)
+      .then(res => {
+        if (res.data.status) {
+          toast.success(res.data.message);
+          fetchOrders();         // reload lại danh sách
+        } else {
+          toast.error(res.data.message);
+        }
+      })
+      .catch(() => toast.error("Hủy đơn thất bại"));
   };
 
-  // Khi user đổi tab → gọi fetchOrders (với spinner)
+  // Tab change effect
   useEffect(() => {
     setShowAll(false);
     fetchOrders();
   }, [activeTab]);
 
-  // Polling: sync GHN → BE, rồi refreshOrders (không spinner)
+  // Polling effect
   useEffect(() => {
     if (pollRef.current) clearInterval(pollRef.current);
 
@@ -149,7 +173,6 @@ export default function OrderPage() {
       refreshOrders();
     };
 
-    // chạy ngay lập tức, sau đó mỗi 30s
     poll();
     pollRef.current = setInterval(poll, 30_000);
 
@@ -158,7 +181,7 @@ export default function OrderPage() {
     };
   }, [orders, activeTab]);
 
-  // Filter & pagination phía client
+  // Client-side filtering & pagination
   const filtered = orders.filter(o => {
     if (!searchValue) return true;
     return (
@@ -200,8 +223,7 @@ export default function OrderPage() {
                       activeTab === t.value
                         ? "bg-black text-white"
                         : "bg-white text-gray-600"
-                    }`}
-                  >
+                    }`}>
                     {t.label}
                   </button>
                 ))}
@@ -218,7 +240,7 @@ export default function OrderPage() {
             {filtered.length === 0 ? (
               <p className="text-gray-500">Không có đơn hàng nào.</p>
             ) : (
-              <>
+              <> 
                 {displayed.map(o => (
                   <Link key={o.orderId} href={`/profile/order/${o.orderId}`}>
                     <div className="border p-4 mb-4 bg-white hover:bg-gray-50 cursor-pointer">
@@ -246,11 +268,10 @@ export default function OrderPage() {
                           <div className="flex-1">
                             <p className="font-semibold">{it.productName}</p>
                             <p className="text-sm text-gray-600">
-                              Giá: {it.priceAtPurchase.toLocaleString("vi-VN")}₫ x{" "}
-                              {it.quantity}
+                              Giá: {it.priceAtPurchase.toLocaleString("vi-VN")}₫ x {it.quantity}
                             </p>
                             <p className="text-sm text-gray-600">
-                              Size: {it.size} – Color:{" "}
+                              Size: {it.size} – Color: 
                               <span
                                 className="inline-block w-4 h-4 border rounded ml-1"
                                 style={{ backgroundColor: it.color }}
@@ -266,23 +287,42 @@ export default function OrderPage() {
                             Phí vận chuyển: {o.shippingCost.toLocaleString("vi-VN")}₫
                           </p>
                           <p className="text-gray-900">
-                            Tổng:{" "}
+                            Tổng: 
                             <strong>
                               {(o.subTotal + o.shippingCost).toLocaleString("vi-VN")}₫
                             </strong>
                           </p>
                         </div>
-                        {o.status === "Delivered" && (
-                          <button
-                            onClick={e => {
-                              e.stopPropagation();
-                              handleConfirmReceived(o.orderId);
-                            }}
-                            className="bg-green-600 text-white px-4 py-2 rounded text-sm"
-                          >
-                            Đã nhận được hàng
+                        <div className="flex gap-2">
+                          {o.status === "Delivered" && (
+                            <button
+                              onClick={e => {
+                                e.stopPropagation();
+                                handleConfirmReceived(o.orderId);
+                              }}
+                              className="bg-green-600 text-white px-4 py-2 rounded text-sm"
+                            >
+                              Đã nhận được hàng
                           </button>
-                        )}
+                           )}
+                           { o.status === "Pending Confirmed" && (
+                           <button
+                           onClick={e => {
+                             e.stopPropagation();
+                             e.preventDefault();
+                             setConfirmMessage("Bạn có chắc chắn muốn hủy đơn hàng này?");
+                             // gán callback thật
+                             setOnConfirm(() => () => handleCancelOrder(o.orderId));
+                             setShowConfirm(true);
+                           }}
+                           className="bg-red-600 text-white px-4 py-2 rounded text-sm"
+                         >
+                           Hủy Đơn
+                         </button>
+                         
+                          ) }
+
+                        </div>
                       </div>
                     </div>
                   </Link>
@@ -304,6 +344,30 @@ export default function OrderPage() {
         </div>
       </main>
       <Footer />
+      {showConfirm && (
+  <div className="fixed inset-0 bg-gray-700 bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white rounded shadow-lg p-6 max-w-sm w-full">
+      <p className="text-gray-800">{confirmMessage}</p>
+      <div className="mt-4 flex justify-end gap-2">
+        <button
+          onClick={() => setShowConfirm(false)}
+          className="px-4 py-2 bg-gray-300 text-gray-700 rounded"
+        >
+          Không
+        </button>
+        <button
+          onClick={() => {
+            onConfirm();
+            setShowConfirm(false);
+          }}
+          className="px-4 py-2 bg-red-600 text-white rounded"
+        >
+          Có
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
