@@ -16,11 +16,10 @@ import { GoogleLoginRequest, GoogleLoginResponse } from "@/types";
 
 export default function LoginWithGoogle() {
   const router = useRouter();
-  const clientId = env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const clientId = env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!;
 
   const handleSuccess = async (credentialResponse: CredentialResponse) => {
     const idToken = credentialResponse?.credential;
-    console.log("[LoginWithGoogle] idToken:", idToken);
     if (!idToken) {
       toast.error("Không nhận được ID Token từ Google.");
       return;
@@ -30,33 +29,37 @@ export default function LoginWithGoogle() {
       const payload: GoogleLoginRequest = { idToken };
       const res = await loginService.postGoogleLogin(payload);
 
-      // Debug response
-      console.log("[LoginWithGoogle] full response:", res);
-      console.log("[LoginWithGoogle] response.data:", res.data);
-
-      const body: GoogleLoginResponse = res.data;
-
-      // Nếu BE có trả status/message, bạn có thể kiểm tra thêm:
-      if (body.status === false) {
-        toast.error(body.message || "Đăng nhập Google thất bại");
+      // 1) Kiểm tra HTTP-level status
+      const rootStatus = res.data.status;
+      const rootMessage = res.data.message;
+      if (!rootStatus) {
+        toast.error(rootMessage || "Đăng nhập Google thất bại");
         return;
       }
 
-      // Lấy token + account trực tiếp từ root của response
-      const { token, account } = body;
+      // 2) Kiểm tra inner success
+      const inner = (res.data as GoogleLoginResponse).data;
+      if (!inner.success) {
+        toast.error(inner.errors.join(", ") || "Không thể đăng nhập bằng Google");
+        return;
+      }
+
+      // 3) Lấy token và account từ inner.data
+      const { token, account } = inner;
       if (!token) {
-        toast.error("Không lấy được token từ server");
+        toast.error("Server không trả về token");
         return;
       }
 
+      // 4) Lưu cookie và chuyển trang
       setCookie("token", token, { maxAge: 60 * 60 * 24 });
-      setCookie("accountId", account.accountId, { maxAge: 60 * 60 * 24 });
+      setCookie("accountId", account.accountId.toString(), { maxAge: 60 * 60 * 24 });
       setCookie("userName", account.fullName, { maxAge: 60 * 60 * 24 });
 
       toast.success("Đăng nhập Google thành công!");
       router.push("/");
     } catch (err) {
-      console.error("Lỗi Google‑login:", err);
+      console.error("Lỗi Google-login:", err);
       toast.error("Không thể kết nối đến server.");
     }
   };

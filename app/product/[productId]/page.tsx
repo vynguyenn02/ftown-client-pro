@@ -547,13 +547,6 @@ const handleEditQuantity = (productVariantId: number, change: number) => {
                 <AiOutlineRight />
               </button>
               <button
-                onClick={() => setShowShippingDrawer(true)}
-                className="flex justify-between items-center w-full text-left py-3"
-              >
-                <span>Chính sách vận chuyển</span>
-                <AiOutlineRight />
-              </button>
-              <button
                 onClick={() => setShowReturnDrawer(true)}
                 className="flex justify-between items-center w-full text-left py-3"
               >
@@ -711,7 +704,7 @@ const handleEditQuantity = (productVariantId: number, change: number) => {
                 </div>
                 <div className="mt-4">
                   <p className="text-sm text-gray-500 mb-2">
-                    Phí ship dao động từ 17k - 39k tuỳ khu vực. Phí ship sẽ do DVVC báo giá khi giao.
+                    Phí ship được cố định 30k cho mỗi đơn hàng.
                   </p>
                   <div className="flex items-center justify-between mb-4">
                     <span className="font-medium">Tạm tính</span>
@@ -764,37 +757,7 @@ const handleEditQuantity = (productVariantId: number, change: number) => {
           </>
         )}
 
-        {/* Drawer: Chính sách vận chuyển */}
-        {showShippingDrawer && (
-          <>
-            <div
-              className="fixed inset-0 bg-black bg-opacity-50 z-40"
-              onClick={() => setShowShippingDrawer(false)}
-            />
-            <div
-              className="fixed top-0 right-0 w-full md:w-[450px] h-full bg-white text-black z-50 flex flex-col"
-              style={{ boxShadow: "-2px 0 5px rgba(0,0,0,0.1)" }}
-            >
-              <div className="p-4 flex items-center justify-between border-b">
-                <h2 className="text-lg">Chính sách vận chuyển</h2>
-                <button onClick={() => setShowShippingDrawer(false)}>
-                  <AiOutlineClose className="text-xl" />
-                </button>
-              </div>
-              <div className="p-4 flex-1 overflow-auto text-sm text-gray-700">
-                <p className="mb-2">
-                  - Miễn phí vận chuyển với đơn hàng từ 1.000.000đ trở lên.
-                </p>
-                <p className="mb-2">
-                  - Đơn hàng dưới 1.000.000đ: Phí ship dao động 17k - 39k tuỳ khu vực.
-                </p>
-                <p className="mb-2">
-                  - Thời gian giao hàng dự kiến: 2-5 ngày (nội thành), 3-7 ngày (ngoại thành).
-                </p>
-              </div>
-            </div>
-          </>
-        )}
+    
 
         {/* Drawer: Chính sách đổi trả */}
         {showReturnDrawer && (
@@ -815,7 +778,7 @@ const handleEditQuantity = (productVariantId: number, change: number) => {
               </div>
               <div className="p-4 flex-1 overflow-auto text-sm text-gray-700">
                 <p className="mb-2">
-                  - Thời gian đổi trả trong vòng 7 ngày kể từ ngày nhận hàng.
+                  - Thời gian đổi trả trong vòng 7 ngày kể từ khi đơn hàng hoàn thành.
                 </p>
                 <p className="mb-2">
                   - Sản phẩm đổi trả phải còn nguyên tem, mác, chưa qua sử dụng.

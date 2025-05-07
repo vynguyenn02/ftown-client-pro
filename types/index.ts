@@ -384,6 +384,7 @@ export type OrderDetailData = {
   status: string;
   createdDate: string;
   orderItems: OrderDetailItem[];
+  isFeedback: boolean; // Thêm trường này nếu cần thiết
 };
 
 // Response trả về khi gọi GET /orders/{orderId}/details
@@ -563,18 +564,34 @@ export type ConfirmReceive = {
   message: string;
 }
 
+// export type GoogleLoginResponse = {
+//   token: string;
+//   account: {
+//     accountId: number;
+//     fullName: string;
+//     email?: string;
+//     createdDate?: string | null;
+//     lastLoginDate?: string | null;
+//   };
+//   // nếu BE có trả thêm message hay status, bạn cũng có thể thêm vào
+//   status?: boolean;
+//   message?: string;
+// }
 export type GoogleLoginResponse = {
-  token: string;
-  account: {
-    accountId: number;
-    fullName: string;
-    email?: string;
-    createdDate?: string | null;
-    lastLoginDate?: string | null;
+  data: {
+    token: string;
+    account: {
+      accountId: number;
+      fullName: string;
+      email?: string;
+      createdDate?: string | null;
+      lastLoginDate?: string | null;
+    };
+    errors: any[];
+    success: boolean;
   };
-  // nếu BE có trả thêm message hay status, bạn cũng có thể thêm vào
-  status?: boolean;
-  message?: string;
+  status: boolean;
+  message: string;
 }
 export type GoogleLoginRequest = {
   idToken: string;

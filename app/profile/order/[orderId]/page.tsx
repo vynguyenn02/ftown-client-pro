@@ -223,9 +223,14 @@ export default function OrderDetailPage() {
                         `/profile/order/feedback?orderId=${order.orderId}&accountId=${accId}`
                       );
                     }}
-                    className="bg-blue-600 text-white px-4 py-2 text-sm font-semibold rounded"
+                    disabled={order.isFeedback}
+                    className={`px-4 py-2 text-sm font-semibold rounded
+                      ${order.isFeedback
+                        ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                        : "bg-blue-600 text-white hover:bg-blue-700"
+                    }`}
                   >
-                    Đánh giá
+                    {order.isFeedback ? "Đã đánh giá" : "Đánh giá"}
                   </button>
                   <button
                     onClick={(e) => {
@@ -249,6 +254,7 @@ export default function OrderDetailPage() {
                   </button>
                 </div>
               )}
+
             </div>
           </div>
         </div>

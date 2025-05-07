@@ -7,7 +7,7 @@ export default function AboutUsPage() {
       <Header />
       <main className="flex flex-1 items-center justify-center pt-20">
         <img
-          src="https://cdn.shopify.com/s/files/1/0681/2821/1221/files/layout_ab_us_2_1.jpg?v=1721821378"
+          src="https://res.cloudinary.com/dqjtkdldj/image/upload/v1746376663/image_3_eevan2.png"
           alt="About Us"
           className="max-h-full max-w-full"
         />
