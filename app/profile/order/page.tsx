@@ -161,7 +161,7 @@ export default function OrderPage() {
   useEffect(() => {
     if (pollRef.current) clearInterval(pollRef.current);
 
-    const skipStatuses = ["completed", "cancel", "return requested"];
+    const skipStatuses = ["completed", "cancel", "return requested", "approved", "rejected"];
 
     const poll = async () => {
       const toSync = orders.filter(
