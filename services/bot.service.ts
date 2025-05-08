@@ -4,7 +4,7 @@ import { getCookie } from "cookies-next";
 import * as signalR from "@microsoft/signalr";
 
 // URL của hub chat
-const CHAT_HUB_URL = "https://ftbotservicee.azurewebsites.net/bothub";
+const CHAT_HUB_URL = "https://ftbotservice.azurewebsites.net/bothub";
 
 class BotService {
   private hubConnection: signalR.HubConnection | null = null;
