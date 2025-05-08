@@ -16,7 +16,7 @@ if (typeof window !== "undefined") {
   bc = new BroadcastChannel("funky-logout");
 }
 
-// Type‑guard: payload có pagination hay không
+// Type-guard: payload có pagination hay không
 function isPagination<T>(obj: any): obj is { items: T[] } {
   return obj && typeof obj === "object" && Array.isArray(obj.items);
 }
@@ -24,19 +24,32 @@ function isPagination<T>(obj: any): obj is { items: T[] } {
 // Helper cho badge status
 const getStatusColorClass = (status: string) => {
   switch (status) {
-    case "Cancel":            return "bg-red-100 text-red-500";
-    case "Shipped":           return "bg-green-100 text-green-500";
-    case "Shipping":          return "bg-blue-100 text-blue-500";
-    case "Pending Confirmed": return "bg-yellow-100 text-yellow-500";
-    case "Confirmed":         return "bg-gray-100 text-gray-500";
-    case "Completed":         return "bg-purple-100 text-purple-500";
-    default:                  return "bg-gray-100 text-gray-500";
+    case "Cancel":
+      return "bg-red-100 text-red-500";
+    case "Shipped":
+      return "bg-green-100 text-green-500";
+    case "Shipping":
+      return "bg-blue-100 text-blue-500";
+    case "Pending Confirmed":
+      return "bg-yellow-100 text-yellow-500";
+    case "Confirmed":
+      return "bg-gray-100 text-gray-500";
+    case "Completed":
+      return "bg-purple-100 text-purple-500";
+    case "Return Approved":
+      return "bg-green-100 text-green-500";
+    case "Return Rejected":
+      return "bg-red-100 text-red-500";
+    default:
+      return "bg-gray-100 text-gray-500";
   }
 };
 
+// Tabs: thêm tab 'Đã xử lý'
 const tabs = [
   { label: "Hoàn thành",       value: "Completed" },
   { label: "Yêu cầu trả hàng", value: "Return Requested" },
+  { label: "Đã xử lý",         value: "Processed" },
 ];
 
 export default function ReturnItemPage() {
@@ -58,7 +71,7 @@ export default function ReturnItemPage() {
     return () => { if (bc) bc.onmessage = null; };
   }, []);
 
-  // Fetch orders cho cả hai tab
+  // Fetch orders cho cả ba tab
   const fetchOrders = async () => {
     const accountId = Number(getCookie("accountId"));
     if (!accountId) {
@@ -69,29 +82,43 @@ export default function ReturnItemPage() {
 
     setLoading(true);
     try {
-      // Gọi API tùy tab
-      const res =
-        activeTab === "Completed"
-          ? await orderService.getOrdersReturnByAccountId(accountId)
-          : await orderService.getOrdersByAccountId(accountId, "Return Requested");
+      let list: Order[] = [];
 
-      if (res.data.status) {
-        const payload = res.data.data;
-        let list: Order[] = [];
-
-        if (isPagination<Order>(payload)) {
-          list = payload.items;
-        } else if (Array.isArray(payload)) {
-          list = payload;
-        } else {
-          list = [];
+      if (activeTab === "Completed") {
+        const res = await orderService.getOrdersReturnByAccountId(accountId);
+        if (res.data.status) {
+          const payload = res.data.data;
+          list = isPagination<Order>(payload) ? payload.items : payload as Order[];
         }
+      } else if (activeTab === "Return Requested") {
+        const res = await orderService.getOrdersByAccountId(accountId, "Return Requested");
+        if (res.data.status) {
+          const payload = res.data.data;
+          list = isPagination<Order>(payload) ? payload.items : payload as Order[];
+        }
+      } else if (activeTab === "Processed") {
+        // Lấy cả Return Approved và Return Rejected
+        const [approvedRes, rejectedRes] = await Promise.all([
+          orderService.getOrdersByAccountId(accountId, "Return Approved"),
+          orderService.getOrdersByAccountId(accountId, "Return Rejected"),
+        ]);
 
-        setOrders(list);
-      } else {
-        toast.error(res.data.message);
-        setOrders([]);
+        if (approvedRes.data.status && rejectedRes.data.status) {
+          const approvedData = approvedRes.data.data;
+          const rejectedData = rejectedRes.data.data;
+
+          const approvedItems = isPagination<Order>(approvedData)
+            ? approvedData.items
+            : approvedData as Order[];
+          const rejectedItems = isPagination<Order>(rejectedData)
+            ? rejectedData.items
+            : rejectedData as Order[];
+
+          list = [...approvedItems, ...rejectedItems];
+        }
       }
+
+      setOrders(list);
     } catch {
       toast.error("Có lỗi xảy ra khi lấy đơn hàng!");
       setOrders([]);
@@ -100,7 +127,7 @@ export default function ReturnItemPage() {
     }
   };
 
-  // Khi đổi tab hoặc router
+  // Khi đổi tab hoặc router thay đổi
   useEffect(() => {
     fetchOrders();
   }, [activeTab, router]);
@@ -197,41 +224,38 @@ export default function ReturnItemPage() {
                           {item.priceAtPurchase.toLocaleString("vi-VN")}₫ x {item.quantity}
                         </p>
                         <p className="text-sm text-gray-600">
-                              Size: {item.size} – Color:{" "}
-                              <span
-                                className="inline-block w-4 h-4 border rounded ml-1"
-                                style={{ backgroundColor: item.color }}
-                              />
-                            </p>
+                          Size: {item.size} – Color:{" "}
+                          <span
+                            className="inline-block w-4 h-4 border rounded ml-1"
+                            style={{ backgroundColor: item.color }}
+                          />
+                        </p>
                       </div>
                     </div>
                   ))}
 
                   {/* Summary & Actions */}
                   <div className="flex justify-between items-center">
-                  <div className="space-y-1">
- 
-                  <p className="text-gray-600">
-                    Phí ship:{" "}
-                      {order.shippingCost.toLocaleString("vi-VN")}₫
-                  </p>
-                  <p className="text-gray-900">
-                    Tổng:{" "}
-                    <strong className="text-gray-800">
-                      {(order.subTotal + order.shippingCost).toLocaleString("vi-VN")}₫
-                    </strong>
-                  </p>
-                </div>
+                    <div className="space-y-1">
+                      <p className="text-gray-600">
+                        Phí ship: {order.shippingCost.toLocaleString("vi-VN")}₫
+                      </p>
+                      <p className="text-gray-900">
+                        Tổng:{" "}
+                        <strong className="text-gray-800">
+                          {(order.subTotal + order.shippingCost).toLocaleString("vi-VN")}₫
+                        </strong>
+                      </p>
+                    </div>
                     <div className="flex gap-2">
+                      {/* Chỉ show nút đổi/trả với đơn đã hoàn thành */}
                       {order.status.toLowerCase() === "completed" && (
-                        <>
-                          <button
-                            onClick={() => router.push(`/profile/order/${order.orderId}`)}
-                            className="bg-red-600 text-white px-4 py-2 text-sm rounded"
-                          >
-                            ĐỔI/ TRẢ HÀNG
-                          </button>
-                        </>
+                        <button
+                          onClick={() => router.push(`/profile/order/${order.orderId}`)}
+                          className="bg-red-600 text-white px-4 py-2 text-sm rounded"
+                        >
+                          ĐỔI/ TRẢ HÀNG
+                        </button>
                       )}
                     </div>
                   </div>
