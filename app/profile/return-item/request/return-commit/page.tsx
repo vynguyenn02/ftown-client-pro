@@ -26,7 +26,7 @@ export default function ReturnCommitPage() {
   const [reason, setReason] = useState("");
   const [reasonDetail, setReasonDetail] = useState("");
   const [refundOption, setRefundOption] = useState(""); // "Đổi hàng" hoặc "Hoàn tiền"
-  const [refundMethod, setRefundMethod] = useState("Bank");
+  const [refundMethod, setRefundMethod] = useState("Hoàn tiền qua ngân hàng");
   const [bankName, setBankName] = useState("");
   const [bankAccountName, setBankAccountName] = useState("");
   const [bankAccountNumber, setBankAccountNumber] = useState("");
