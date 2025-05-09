@@ -31,7 +31,7 @@ export default function ContactPage() {
       <Header />
       <main className="flex-1 px-6 pt-20 lg:px-20">
         {/* Tiêu đề */}
-        <h1 className="mb-10 text-center text-3xl font-bold">Thông tin các cửa hàng</h1>
+        <h1 className="mb-10 text-center text-3xl font-bold"></h1>
 
         {/* Danh sách cửa hàng */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
