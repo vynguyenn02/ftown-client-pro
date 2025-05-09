@@ -14,28 +14,34 @@ import { Order } from "@/types";
 
 // map status → tailwind
 const getStatusColorClass = (status: string) => {
-  switch (status) {
-    case "Cancel":
+  switch (status.toLowerCase()) {
+    case "cancel":
       return "bg-red-100 text-red-500";
-    case "Delivered":
+    case "delivered":
       return "bg-green-100 text-green-500";
-    case "Shipping":
+    case "shipping":
       return "bg-blue-100 text-blue-500";
-    case "Pending Confirmed":
+    case "pending confirmed":
       return "bg-yellow-100 text-yellow-500";
-    case "Confirmed":
+    case "confirmed":
       return "bg-gray-100 text-gray-500";
-    case "Completed":
+    case "completed":              // chỉ cần viết lowercase ở đây
       return "bg-purple-100 text-purple-500";
-      case "Return Approved":
-        return "bg-green-100 text-green-500";
-      case "Return Rejected":
-        return "bg-red-100 text-red-500";
+    case "return approved":
+      return "bg-green-100 text-green-500";
+    case "return rejected":
+      return "bg-red-100 text-red-500";
     default:
       return "bg-gray-100 text-gray-500";
   }
 };
-
+const formatStatus = (status: string) => {
+  return status
+    .toLowerCase()
+    .split(" ")
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+};
 const tabs = [
   { label: "Tất cả", value: "ALL" },
   { label: "Chờ xác nhận", value: "Pending Confirmed" },
@@ -251,12 +257,10 @@ export default function OrderPage() {
                       <div className="flex justify-between mb-3">
                         <span>Đơn hàng #{o.orderId}</span>
                         <span
-                          className={`px-2 py-1 text-sm border ${getStatusColorClass(
-                            o.status
-                          )}`}
-                        >
-                          {o.status}
-                        </span>
+                        className={`px-2 py-1 text-sm border ${getStatusColorClass(o.status)}`}
+                      >
+                        {formatStatus(o.status)}
+                      </span>
                       </div>
 
                       {o.items.map((it, idx) => (

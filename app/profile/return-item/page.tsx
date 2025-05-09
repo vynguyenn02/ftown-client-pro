@@ -22,29 +22,40 @@ function isPagination<T>(obj: any): obj is { items: T[] } {
 }
 
 // Helper cho badge status
+const formatStatus = (status: string) =>
+  status
+    .toLowerCase()
+    .split(" ")
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+
+// 2. Sửa getStatusColorClass sử dụng toLowerCase()
 const getStatusColorClass = (status: string) => {
-  switch (status) {
-    case "Cancel":
+  switch (status.toLowerCase()) {
+    case "cancel":
       return "bg-red-100 text-red-500";
-    case "Shipped":
+    case "shipped":
       return "bg-green-100 text-green-500";
-    case "Shipping":
+    case "shipping":
       return "bg-blue-100 text-blue-500";
-    case "Pending Confirmed":
+    case "pending confirmed":
       return "bg-yellow-100 text-yellow-500";
-    case "Confirmed":
+    case "confirmed":
       return "bg-gray-100 text-gray-500";
-    case "Completed":
+    case "completed":
       return "bg-purple-100 text-purple-500";
-    case "Return Approved":
+    case "return requested":
+      return "bg-indigo-100 text-indigo-500"; // nếu cần
+    case "return approved":
       return "bg-green-100 text-green-500";
-    case "Return Rejected":
+    case "return rejected":
       return "bg-red-100 text-red-500";
+    case "processed":
+      return "bg-gray-100 text-gray-500"; // ví dụ cho tab Đã xử lý
     default:
       return "bg-gray-100 text-gray-500";
   }
 };
-
 // Tabs: thêm tab 'Đã xử lý'
 const tabs = [
   { label: "Hoàn thành",       value: "Completed" },
@@ -201,10 +212,13 @@ export default function ReturnItemPage() {
                 >
                   {/* Header */}
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Đơn hàng #{order.orderId}</span>
-                    <span className={`border px-2 py-1 text-sm font-medium ${getStatusColorClass(order.status)}`}>
-                      {order.status}
-                    </span>
+                          <span className="text-gray-600">Đơn hàng #{order.orderId}</span>
+                          <span
+                    className={`border px-2 py-1 text-sm font-medium ${getStatusColorClass(order.status)}`}
+                  >
+                    {formatStatus(order.status)}
+                  </span>
+
                   </div>
 
                   {/* Items */}
