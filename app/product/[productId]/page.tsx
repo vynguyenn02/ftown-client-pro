@@ -127,7 +127,7 @@ export default function ProductDetailPage({ params }: { params: { productId: str
       try {
         const productId = parseInt(params.productId, 10);
         if (isNaN(productId)) return;
-        const res = await feedbackService.getFeedbackByProductId(productId, 1, 3);
+        const res = await feedbackService.getFeedbackByProductId(productId, 1, 10);
         if (res.data.status) {
           setFeedbackList(res.data.data);
         } else {
