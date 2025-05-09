@@ -99,7 +99,7 @@ const Sidebar: React.FC = () => {
               <Link href="/profile/order">Đơn hàng của tôi</Link>
             </Menu.Item>
             <Menu.Item key="/profile/return-item" icon={<RetweetOutlined />}>
-              <Link href="/profile/return-item">Trả hàng/ Hoàn tiền</Link>
+              <Link href="/profile/return-item">Đổi hàng/ Hoàn tiền</Link>
             </Menu.Item>
           </Menu.ItemGroup>
 
