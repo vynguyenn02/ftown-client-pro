@@ -19,7 +19,7 @@
     "jsx": "preserve",
     "incremental": true,
     "baseUrl": ".",
-    "types": ["node"],
+    "types": ["node", "jasmine"],
     "plugins": [
       {
         "name": "next"
@@ -29,6 +29,6 @@
       "@/*": ["*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.mjs", ".next/types/**/*.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.mjs", ".next/types/**/*.ts", "test/**/*.spec.ts"],
   "exclude": ["node_modules"]
 }

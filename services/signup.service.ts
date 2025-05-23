@@ -1,7 +1,7 @@
 // register.service.ts
 import { AxiosResponse } from "axios";
 import { RegisterRequest } from "@/types"; // Import kiểu
-import { post } from "@/utils/axios";
+import { post } from "../utils/axios";
 
 export const END_POINT = {
   REGISTER: "/auth/register",

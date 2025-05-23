@@ -1,7 +1,6 @@
 import axios, { AxiosResponse } from "axios"
 import { getCookie } from "cookies-next"
 import { env } from "env.mjs"
-
 import config from "@/config"
 
 /**
